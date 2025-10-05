@@ -24,6 +24,18 @@ export const api = {
         ipcRenderer.off('ai-response-error', errorHandler)
     }
   },
+  getSessionSummary: (): Promise<{
+    sessionStart: string
+    sessionEnd: string
+    totalDurationSec: number
+    checks: number
+    totalUnfocusedSec: number
+    mostCommonDistraction: { activity: string; occurrences: number } | null
+    mostUsedAppActivity: { app: string; activity: string; occurrences: number } | null
+    focusRatio: number
+    longestUnfocusedStreakSec: number
+  }> => ipcRenderer.invoke('get-session-summary'),
+  endSession: (): void => ipcRenderer.send('end-session'),
   dismissOverlay: (): void => ipcRenderer.send('overlay-dismissed')
 }
 
