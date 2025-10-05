@@ -77,20 +77,13 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
   const intervalRef = useRef<number | undefined>(undefined)
   
   // Eye tracking
-  const { state: eyeState, videoRef, initialize, cleanup, toggleLookingState } = useSimpleEyeTracking()
+  const { isLookingAtScreen, lastLookTime, sessionDuration, isInitialized, gazeX, gazeY, toggleLookingState } = useSimpleEyeTracking()
 
   const memoizedOnFinish = useCallback(() => {
     onFinish()
   }, [onFinish])
 
-  // Initialize eye tracking
-  useEffect(() => {
-    const initEyeTracking = async () => {
-      await initialize()
-    }
-    initEyeTracking()
-    return cleanup
-  }, [initialize, cleanup])
+  // Eye tracking is automatically initialized by the hook
 
   useEffect(() => {
     window.api.getSessionIntention().then(i => setIntention(i || 'No intention set'))
@@ -98,7 +91,7 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
     intervalRef.current = setInterval(() => {
       setTimeLeft(t => {
         // Only count down if user is looking at screen
-        if (eyeState.isLookingAtScreen && t > 1) {
+        if (isLookingAtScreen && t > 1) {
           return t - 1
         } else if (t <= 1) {
           clearInterval(intervalRef.current)
@@ -110,13 +103,13 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
     }, 1000) as unknown as number
 
     return () => clearInterval(intervalRef.current)
-  }, [memoizedOnFinish, eyeState.isLookingAtScreen])
+  }, [memoizedOnFinish, isLookingAtScreen])
 
   // Track time away from screen
   useEffect(() => {
-    if (!eyeState.isLookingAtScreen) {
+    if (!isLookingAtScreen) {
       const interval = setInterval(() => {
-        const timeSinceLastLook = Date.now() - eyeState.lastLookTime
+        const timeSinceLastLook = Date.now() - lastLookTime
         const secondsAway = Math.floor(timeSinceLastLook / 1000)
         setTimeAway(secondsAway)
         
@@ -134,7 +127,7 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
       console.log('User is back - hiding splash screen')
       return () => {} // Return empty cleanup function
     }
-  }, [eyeState.isLookingAtScreen, eyeState.lastLookTime])
+  }, [isLookingAtScreen, lastLookTime])
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60)
@@ -161,37 +154,28 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
 
   return (
     <>
-      {/* Hidden video element for fallback detection */}
-      <video
-        ref={videoRef}
-        style={{ display: 'none' }}
-        width="640"
-        height="480"
-        autoPlay
-        muted
-        playsInline
-      />
+      {/* WebGazer handles video internally */}
       
       <div className="session-progress">
         {/* Study Status Indicator */}
         <div 
-          className={`study-status ${eyeState.isLookingAtScreen ? 'status-studying' : 'status-away'}`}
+          className={`study-status ${isLookingAtScreen ? 'status-studying' : 'status-away'}`}
           onClick={toggleLookingState}
           style={{ cursor: 'pointer' }}
           title="Click to toggle eye tracking state for testing"
         >
           <div className="status-indicator" />
-          {eyeState.isLookingAtScreen ? 'STUDYING' : 'LOOK AWAY DETECTED'}
+          {isLookingAtScreen ? 'STUDYING' : 'LOOK AWAY DETECTED'}
         </div>
         
         {/* Debug Info */}
-        {eyeState.isInitialized && (
+        {isInitialized && (
           <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
             <div>
-              WebGazer: {eyeState.isLookingAtScreen ? 'Looking at screen' : 'Looking away'} | 
+              WebGazer: {isLookingAtScreen ? 'Looking at screen' : 'Looking away'} | 
               Away for: {timeAway}s
-              {eyeState.gazeX !== undefined && eyeState.gazeY !== undefined && (
-                <span> | Gaze: ({eyeState.gazeX.toFixed(0)}, {eyeState.gazeY.toFixed(0)})</span>
+              {gazeX !== undefined && gazeY !== undefined && (
+                <span> | Gaze: ({gazeX.toFixed(0)}, {gazeY.toFixed(0)})</span>
               )}
             </div>
             <div style={{ display: 'flex', gap: '5px' }}>
@@ -234,9 +218,9 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
         </div>
         
         {/* Session Duration from Eye Tracking */}
-        {eyeState.isInitialized && (
+        {isInitialized && (
           <div style={{ fontSize: '14px', color: '#888', marginTop: '10px' }}>
-            Focused Time: {formatTime(eyeState.sessionDuration)}
+            Focused Time: {formatTime(sessionDuration)}
           </div>
         )}
         
