@@ -7,6 +7,8 @@ import icon from '../../resources/icon.png?asset'
 import captureService from '../services/capture.service'
 import { analyzeScreenshotWithGemini } from '../services/llm.service'
 import { checkFocusWithVision } from './services/vision.service'
+import sessionTracker from '../services/session-tracker.service'
+import jsonLogger from '../services/json-logger.service'
 
 // Global variables to store extracted app information
 declare global {
@@ -208,6 +210,12 @@ ipcMain.on('start-session', (_event, width: number, height: number) => {
     mainWindow.setSize(width, height)
     mainWindow.center()
 
+    // Start session tracking
+    if (sessionIntention) {
+      const sessionId = sessionTracker.startSession(sessionIntention)
+      jsonLogger.setSessionId(sessionId)
+    }
+
     // Start the 15-second screenshot interval
     if (captureInterval) clearInterval(captureInterval) // Clear any old interval
     captureInterval = setInterval(performScreenCapture, 15000)
@@ -236,6 +244,15 @@ ipcMain.on('overlay-dismissed', () => {
     }
 })
 
+ipcMain.on('stop-session', () => {
+  console.log('🛑 [MAIN] Stopping session - clearing capture interval')
+  // Stop the screenshot capture interval
+  if (captureInterval) {
+    clearInterval(captureInterval)
+    captureInterval = null
+  }
+})
+
 ipcMain.on('exit-app', () => {
   // Stop the interval when exiting
   if (captureInterval) clearInterval(captureInterval)
@@ -248,6 +265,20 @@ ipcMain.handle('get-current-app-info', () => {
     currentApp: global.currentApp,
     currentActivity: global.currentActivity
   }
+})
+
+ipcMain.handle('get-session-analytics', () => {
+  const currentSession = sessionTracker.getCurrentSession()
+  if (!currentSession) return null
+  
+  return sessionTracker.generateAnalytics(currentSession)
+})
+
+ipcMain.handle('end-session-and-get-analytics', () => {
+  const sessionData = sessionTracker.endSession()
+  if (!sessionData) return null
+  
+  return sessionTracker.generateAnalytics(sessionData)
 })
 
 ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
@@ -297,6 +328,31 @@ ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
     // Store these values in variables for later use
     global.currentApp = current_app
     global.currentActivity = current_activity
+    
+    // Track session data
+    sessionTracker.logVisionResponse({
+      focused,
+      userActivity: user_activity,
+      currentApp: current_app,
+      currentActivity: current_activity,
+      rawResponse: JSON.stringify({ focused, user_activity, current_app, current_activity })
+    })
+
+    // Log to JSON files
+    jsonLogger.logVisionResponse({
+      timestamp: Date.now(),
+      focused,
+      userActivity: user_activity,
+      currentApp: current_app,
+      currentActivity: current_activity,
+      rawResponse: JSON.stringify({ focused, user_activity, current_app, current_activity })
+    })
+
+    jsonLogger.logAppInfo({
+      timestamp: Date.now(),
+      currentApp: current_app,
+      currentActivity: current_activity
+    })
     
     return { focused, user_activity, current_app, current_activity }
   } catch (error) {

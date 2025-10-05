@@ -9,8 +9,9 @@ Rules:
 - "user_activity" must summarize the main activity (≤ 3 words), lowercase, no punctuation. Examples: "watch phone", "look away", "eyes closed", "study screen".
 
 Output STRICT JSON only, no prose:
-{"focused": <true|false>, "user_activity": "<≤3 words>"}
-Give the app that I am currently using as the "current_app" and the activity I'm interacting with the app as the "current_activity".
+{"focused": <true|false>, "user_activity": "<≤3 words>", "current_app": "<app name>", "current_activity": "<activity description>"}
+- "current_app" should be the name of the application currently in focus (e.g., "Chrome Browser", "Visual Studio Code", "Terminal", "Other")
+- "current_activity" should describe what the user is doing with that app (e.g., "browsing social media", "coding", "reading", "watching video")
 `
 
 let genAI: GoogleGenerativeAI | null = null
@@ -85,6 +86,14 @@ export const checkFocusWithVision = async (
       let userActivity = typeof parsed?.user_activity === 'string' ? parsed.user_activity : ''
       const currentApp = typeof parsed?.current_app === 'string' ? parsed.current_app : undefined
       const currentActivity = typeof parsed?.current_activity === 'string' ? parsed.current_activity : undefined
+
+      // Debug logging for AI response fields
+      console.log('🔍 [VISION SERVICE] Parsed fields:', {
+        focused: parsed?.focused,
+        user_activity: parsed?.user_activity,
+        current_app: parsed?.current_app,
+        current_activity: parsed?.current_activity
+      })
       
       // If not focused but no activity provided, use a default
       if (!focused && !userActivity) {

@@ -8,9 +8,19 @@ export const api = {
   startSession: (width: number, height: number): void => ipcRenderer.send('start-session', width, height),
   minimizeWindow: (): void => ipcRenderer.send('minimize-window'),
   showSession: (width: number, height: number): void => ipcRenderer.send('show-session', width, height),
-  checkFocus: (imageDataUrl: string): Promise<boolean | { focused: boolean; user_activity: string }> => {
+  checkFocus: (imageDataUrl: string): Promise<{ focused: boolean; user_activity: string; current_app?: string; current_activity?: string }> => {
     return ipcRenderer.invoke('check-focus', imageDataUrl)
   },
+  getCurrentAppInfo: (): Promise<{ currentApp?: string; currentActivity?: string }> => {
+    return ipcRenderer.invoke('get-current-app-info')
+  },
+  getSessionAnalytics: (): Promise<any> => {
+    return ipcRenderer.invoke('get-session-analytics')
+  },
+  endSessionAndGetAnalytics: (): Promise<any> => {
+    return ipcRenderer.invoke('end-session-and-get-analytics')
+  },
+  stopSession: (): void => ipcRenderer.send('stop-session'),
   exitApp: (): void => ipcRenderer.send('exit-app'),
   onAiResponse: (callback: (response: string, isError: boolean) => void): (() => void) => {
     const updateHandler = (_event: Electron.IpcRendererEvent, response: string) => callback(response, false)

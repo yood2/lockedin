@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
 import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
+import { SessionSummary } from './components/SessionSummary'
 
 // --- Components for different views ---
 
@@ -83,8 +84,8 @@ const SessionInProgress = ({
   durationMinutes
 }: {
   onHide: () => void
-  onExit: (message: string) => void
-  onFinish: () => void
+  onExit: (elapsedSeconds: number) => void
+  onFinish: (elapsedSeconds: number) => void
   durationMinutes: number
 }): React.JSX.Element => {
   const [intention, setIntention] = useState('Loading intention...')
@@ -93,11 +94,20 @@ const SessionInProgress = ({
   const intervalRef = useRef<number | undefined>(undefined)
 
   // Vision-based focus tracking
-  const { isFocused, isChecking, userActivity, videoRef, resetFocus } = useLockdown()
+  const { isFocused, isChecking, userActivity, videoRef, resetFocus, stopTracking } = useLockdown()
 
   const memoizedOnFinish = useCallback(() => {
-    onFinish()
-  }, [onFinish])
+    const elapsedSeconds = durationMinutes * 60 - timeLeft
+    console.log('🏁 [SESSION] Session finished! Elapsed time:', elapsedSeconds, 'seconds')
+    
+    // Stop all tracking services
+    if (stopTracking) {
+      stopTracking()
+    }
+    clearInterval(intervalRef.current)
+    
+    onFinish(elapsedSeconds)
+  }, [onFinish, durationMinutes, timeLeft, stopTracking])
 
   useEffect(() => {
     window.api.getSessionIntention().then((i) => setIntention(i || 'No intention set'))
@@ -115,8 +125,13 @@ const SessionInProgress = ({
       })
     }, 1000) as unknown as number
 
-    return () => clearInterval(intervalRef.current)
-  }, [memoizedOnFinish, isFocused])
+    return () => {
+      clearInterval(intervalRef.current)
+      if (stopTracking) {
+        stopTracking()
+      }
+    }
+  }, [memoizedOnFinish, isFocused, stopTracking])
 
   // Show splash screen when not focused (other activity detected)
   useEffect(() => {
@@ -148,8 +163,15 @@ const SessionInProgress = ({
   const handleExit = () => {
     console.log('user has locked in', durationMinutes)
     const elapsedSeconds = Math.max(0, durationMinutes * 60 - timeLeft)
-    const message = `You've focused for ${formatTime(elapsedSeconds)} so far.`
-    onExit(message)
+    console.log('🚪 [SESSION] User exiting early! Elapsed time:', elapsedSeconds, 'seconds')
+    
+    // Stop all tracking services
+    if (stopTracking) {
+      stopTracking()
+    }
+    clearInterval(intervalRef.current)
+    
+    onExit(elapsedSeconds)
   }
 
   const formatTime = (totalSeconds: number) => {
@@ -248,37 +270,17 @@ const SessionInProgress = ({
 const SessionFinished = ({
   onRestart,
   onExit,
-  exitMessage
+  exitMessage,
+  elapsedTime,
+  duration
 }: {
   onRestart: () => void
   onExit: () => void
   exitMessage: string
+  elapsedTime: number
+  duration: number
 }): React.JSX.Element => {
-  return (
-    <div className="session-finished">
-      <div
-        className="text"
-        style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px', color: '#69e688' }}
-      >
-        Session Finished!
-      </div>
-      <div className="intention-display" style={{ marginBottom: '20px' }}>
-        Your locked-in session has ended.{exitMessage && ` ${exitMessage}`} Good work!
-      </div>
-      <div className="actions">
-        <div className="action">
-          <button onClick={onRestart} className="start-button">
-            Start another session
-          </button>
-        </div>
-        <div className="action">
-          <button onClick={onExit} className="exit-button">
-            Exit
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  return <SessionSummary onRestart={onRestart} onExit={onExit} elapsedTime={elapsedTime} duration={duration} />
 }
 
 // --- Main App Component ---
@@ -293,6 +295,8 @@ const sessionViewWidth = 600
 const sessionViewHeight = 400
 const inputViewWidth = 400
 const inputViewHeight = 260
+const summaryViewWidth = 1280
+const summaryViewHeight = 720
 
 function App(): React.JSX.Element {
 
@@ -306,23 +310,36 @@ function App(): React.JSX.Element {
   const [appState, setAppState] = useState<AppState>(AppState.Input)
   const [duration, setDuration] = useState(25)
   const [exitMessage, setExitMessage] = useState('')
+  const [elapsedTime, setElapsedTime] = useState(0)
 
   const handleStartSession = (intention: string, durationMinutes: number) => {
     window.api.setSessionIntention(intention)
     setDuration(durationMinutes)
+    setElapsedTime(0) // Reset elapsed time
     window.api.startSession(sessionViewWidth, sessionViewHeight)
     setAppState(AppState.Session)
   }
 
-  const handleFinish = () => {
-    window.api.showSession(inputViewWidth, inputViewHeight)
+  const handleFinish = (elapsedSeconds: number) => {
+    console.log('✅ [APP] Session completed! Elapsed:', elapsedSeconds, 'seconds')
+    setElapsedTime(elapsedSeconds)
+    // Stop screenshot capture interval
+    window.api.stopSession()
+    window.api.showSession(summaryViewWidth, summaryViewHeight)
     setExitMessage('') // Reset exit message for normal finish
     setAppState(AppState.Finished)
   }
 
-  const handleExitWithMessage = (message: string) => {
+  const handleExitWithMessage = (elapsedSeconds: number) => {
+    console.log('🚪 [APP] Session exited early! Elapsed:', elapsedSeconds, 'seconds')
+    setElapsedTime(elapsedSeconds)
+    const minutes = Math.floor(elapsedSeconds / 60)
+    const seconds = elapsedSeconds % 60
+    const message = `You focused for ${minutes}:${seconds.toString().padStart(2, '0')}`
     setExitMessage(message)
-    window.api.showSession(inputViewWidth, inputViewHeight)
+    // Stop screenshot capture interval
+    window.api.stopSession()
+    window.api.showSession(summaryViewWidth, summaryViewHeight)
     setAppState(AppState.Finished)
   }
 
@@ -331,6 +348,8 @@ function App(): React.JSX.Element {
   }
 
   const handleRestart = () => {
+    setElapsedTime(0)
+    setExitMessage('')
     window.api.showSession(inputViewWidth, inputViewHeight)
     setAppState(AppState.Input)
   }
@@ -355,7 +374,7 @@ function App(): React.JSX.Element {
       )
       break
     case AppState.Finished:
-      content = <SessionFinished onRestart={handleRestart} onExit={handleExit} exitMessage={exitMessage} />
+      content = <SessionFinished onRestart={handleRestart} onExit={handleExit} exitMessage={exitMessage} elapsedTime={elapsedTime} duration={duration} />
       break
     default:
       content = null
