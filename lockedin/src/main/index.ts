@@ -3,6 +3,12 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
+// Services
+// Screen capture (image-based)
+const captureService = require("./src/services/capture.service");
+// const speechService = require("./src/services/speech.service");
+const llmService = require("./src/services/llm.service");
+
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
 
@@ -133,3 +139,5 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+const capture = await captureService.captureAndProcess();
