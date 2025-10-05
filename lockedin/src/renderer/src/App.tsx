@@ -159,7 +159,7 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
     oscillator.stop(audioContext.currentTime + 0.5)
   }
 
-  return (
+return (
     <>
       {/* Hidden video element for fallback detection */}
       <video
@@ -173,7 +173,7 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
       />
       
       <div className="session-progress">
-        {/* Study Status Indicator */}
+        {/* Study Status Indicator - Corrected to ensure proper closing tag */}
         <div 
           className={`study-status ${eyeState.isLookingAtScreen ? 'status-studying' : 'status-away'}`}
           onClick={toggleLookingState}
@@ -182,22 +182,24 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
         >
           <div className="status-indicator" />
           {eyeState.isLookingAtScreen ? 'STUDYING' : 'LOOK AWAY DETECTED'}
-    <div className="session-progress">
-      <div className="text">Session in progress...</div>
-      <div className="intention-display">"{intention}"</div>
-      <div className="timer-display" style={{ fontSize: '32px', fontWeight: 'bold', margin: '15px 0', color: '#6988e6' }}>
-        {formatTime(timeLeft)}
-      </div>
-      <div className="actions">
-        <div className="action">
-          <button onClick={onHide} className="hide-button">
-            Hide
-          </button>
-        </div>
+        </div> 
         
-        {/* Debug Info */}
+        <div className="text">Session in progress...</div>
+        <div className="intention-display">"{intention}"</div>
+        <div className="timer-display" style={{ fontSize: '32px', fontWeight: 'bold', margin: '15px 0', color: '#6988e6' }}>
+          {formatTime(timeLeft)}
+        </div>
+
+        {/* Session Duration from Eye Tracking */}
         {eyeState.isInitialized && (
-          <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <div style={{ fontSize: '14px', color: '#888', marginTop: '10px' }}>
+            Focused Time: {formatTime(eyeState.sessionDuration)}
+          </div>
+        )}
+        
+        {/* Debug Info and Buttons */}
+        {eyeState.isInitialized && (
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'center' }}>
             <div>
               WebGazer: {eyeState.isLookingAtScreen ? 'Looking at screen' : 'Looking away'} | 
               Away for: {timeAway}s
@@ -238,20 +240,8 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
           </div>
         )}
         
-        <div className="text">Session in progress</div>
-        <div className="intention-display">Intention: <code>{intention}</code></div>
-        <div className="timer-display" style={{ fontSize: '32px', fontWeight: 'bold', margin: '15px 0', color: '#6988e6' }}>
-          {formatTime(timeLeft)}
-        </div>
-        
-        {/* Session Duration from Eye Tracking */}
-        {eyeState.isInitialized && (
-          <div style={{ fontSize: '14px', color: '#888', marginTop: '10px' }}>
-            Focused Time: {formatTime(eyeState.sessionDuration)}
-          </div>
-        )}
-        
-        <div className="actions">
+        {/* Unified Actions block */}
+        <div className="actions" style={{ marginTop: '20px' }}>
           <div className="action">
             <button onClick={onHide} className="hide-button">
               Hide
