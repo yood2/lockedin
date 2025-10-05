@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useSimpleEyeTracking } from './hooks/useSimpleEyeTracking'
+import { FuturisticSplash } from './components/FuturisticSplash'
 // import electronLogo from './assets/electron.svg'
 
 // --- Components for different views ---
@@ -70,28 +72,69 @@ const IntentionInput = ({ onStartSession }: { onStartSession: (intention: string
 const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHide: () => void, onExit: () => void, onFinish: () => void, durationMinutes: number }): React.JSX.Element => {
   const [intention, setIntention] = useState('Loading intention...')
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60) // Time left in seconds
-  const intervalRef = useRef<number>()
+  const [timeAway, setTimeAway] = useState(0)
+  const [showSplash, setShowSplash] = useState(false)
+  const intervalRef = useRef<number | undefined>(undefined)
+  
+  // Eye tracking
+  const { state: eyeState, videoRef, initialize, cleanup, toggleLookingState } = useSimpleEyeTracking()
 
   const memoizedOnFinish = useCallback(() => {
     onFinish()
   }, [onFinish])
+
+  // Initialize eye tracking
+  useEffect(() => {
+    const initEyeTracking = async () => {
+      await initialize()
+    }
+    initEyeTracking()
+    return cleanup
+  }, [initialize, cleanup])
 
   useEffect(() => {
     window.api.getSessionIntention().then(i => setIntention(i || 'No intention set'))
 
     intervalRef.current = setInterval(() => {
       setTimeLeft(t => {
-        if (t <= 1) {
+        // Only count down if user is looking at screen
+        if (eyeState.isLookingAtScreen && t > 1) {
+          return t - 1
+        } else if (t <= 1) {
           clearInterval(intervalRef.current)
           memoizedOnFinish()
           return 0
         }
-        return t - 1
+        return t // Don't count down if not looking at screen
       })
     }, 1000) as unknown as number
 
     return () => clearInterval(intervalRef.current)
-  }, [memoizedOnFinish])
+  }, [memoizedOnFinish, eyeState.isLookingAtScreen])
+
+  // Track time away from screen
+  useEffect(() => {
+    if (!eyeState.isLookingAtScreen) {
+      const interval = setInterval(() => {
+        const timeSinceLastLook = Date.now() - eyeState.lastLookTime
+        const secondsAway = Math.floor(timeSinceLastLook / 1000)
+        setTimeAway(secondsAway)
+        
+        // Show splash after 10 seconds
+        if (timeSinceLastLook > 10000) {
+          setShowSplash(true)
+          console.log('Splash screen triggered after', secondsAway, 'seconds away')
+        }
+      }, 100)
+      
+      return () => clearInterval(interval)
+    } else {
+      setTimeAway(0)
+      setShowSplash(false)
+      console.log('User is back - hiding splash screen')
+      return () => {} // Return empty cleanup function
+    }
+  }, [eyeState.isLookingAtScreen, eyeState.lastLookTime])
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60)
@@ -99,7 +142,46 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   }
 
+  const playSound = () => {
+    // Create a simple beep sound
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+    
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+    
+    oscillator.start(audioContext.currentTime)
+    oscillator.stop(audioContext.currentTime + 0.5)
+  }
+
   return (
+    <>
+      {/* Hidden video element for fallback detection */}
+      <video
+        ref={videoRef}
+        style={{ display: 'none' }}
+        width="640"
+        height="480"
+        autoPlay
+        muted
+        playsInline
+      />
+      
+      <div className="session-progress">
+        {/* Study Status Indicator */}
+        <div 
+          className={`study-status ${eyeState.isLookingAtScreen ? 'status-studying' : 'status-away'}`}
+          onClick={toggleLookingState}
+          style={{ cursor: 'pointer' }}
+          title="Click to toggle eye tracking state for testing"
+        >
+          <div className="status-indicator" />
+          {eyeState.isLookingAtScreen ? 'STUDYING' : 'LOOK AWAY DETECTED'}
     <div className="session-progress">
       <div className="text">Session in progress...</div>
       <div className="intention-display">"{intention}"</div>
@@ -112,13 +194,84 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
             Hide
           </button>
         </div>
-        <div className="action">
-          <button onClick={onExit} className="exit-button">
-            Exit
-          </button>
+        
+        {/* Debug Info */}
+        {eyeState.isInitialized && (
+          <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <div>
+              WebGazer: {eyeState.isLookingAtScreen ? 'Looking at screen' : 'Looking away'} | 
+              Away for: {timeAway}s
+              {eyeState.gazeX !== undefined && eyeState.gazeY !== undefined && (
+                <span> | Gaze: ({eyeState.gazeX.toFixed(0)}, {eyeState.gazeY.toFixed(0)})</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <button 
+                onClick={() => setShowSplash(!showSplash)}
+                style={{ 
+                  padding: '2px 6px', 
+                  fontSize: '10px',
+                  background: '#333',
+                  color: '#fff',
+                  border: '1px solid #555',
+                  borderRadius: '3px',
+                  cursor: 'pointer'
+                }}
+              >
+                Test Splash
+              </button>
+              <button 
+                onClick={toggleLookingState}
+                style={{ 
+                  padding: '2px 6px', 
+                  fontSize: '10px',
+                  background: '#444',
+                  color: '#fff',
+                  border: '1px solid #666',
+                  borderRadius: '3px',
+                  cursor: 'pointer'
+                }}
+              >
+                Toggle Eye State
+              </button>
+            </div>
+          </div>
+        )}
+        
+        <div className="text">Session in progress</div>
+        <div className="intention-display">Intention: <code>{intention}</code></div>
+        <div className="timer-display" style={{ fontSize: '32px', fontWeight: 'bold', margin: '15px 0', color: '#6988e6' }}>
+          {formatTime(timeLeft)}
+        </div>
+        
+        {/* Session Duration from Eye Tracking */}
+        {eyeState.isInitialized && (
+          <div style={{ fontSize: '14px', color: '#888', marginTop: '10px' }}>
+            Focused Time: {formatTime(eyeState.sessionDuration)}
+          </div>
+        )}
+        
+        <div className="actions">
+          <div className="action">
+            <button onClick={onHide} className="hide-button">
+              Hide
+            </button>
+          </div>
+          <div className="action">
+            <button onClick={onExit} className="exit-button">
+              Exit
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      
+      {/* Futuristic Splash Screen */}
+      <FuturisticSplash 
+        isVisible={showSplash} 
+        timeAway={timeAway} 
+        onPlaySound={playSound}
+      />
+    </>
   )
 }
 
