@@ -39,7 +39,12 @@ function dataUrlToGcsPart(dataUrl: string): { inlineData: { mimeType: string; da
 
 export const checkFocusWithVision = async (
   imageDataUrl: string
-): Promise<{ focused: boolean; user_activity: string }> => {
+): Promise<{ 
+  focused: boolean; 
+  user_activity: string; 
+  current_app?: string; 
+  current_activity?: string;
+}> => {
   console.log('🔍 [VISION SERVICE] Starting focus check...')
   console.log('📷 [VISION SERVICE] Image data URL length:', imageDataUrl.length)
   
@@ -78,6 +83,8 @@ export const checkFocusWithVision = async (
       
       const focused = Boolean(parsed?.focused)
       let userActivity = typeof parsed?.user_activity === 'string' ? parsed.user_activity : ''
+      const currentApp = typeof parsed?.current_app === 'string' ? parsed.current_app : undefined
+      const currentActivity = typeof parsed?.current_activity === 'string' ? parsed.current_activity : undefined
       
       // If not focused but no activity provided, use a default
       if (!focused && !userActivity) {
@@ -85,8 +92,16 @@ export const checkFocusWithVision = async (
         console.log('⚠️ [VISION SERVICE] No activity provided for unfocused state, using default')
       }
       
-      const finalResult = { focused, user_activity: userActivity }
+      const finalResult = { 
+        focused, 
+        user_activity: userActivity,
+        current_app: currentApp,
+        current_activity: currentActivity
+      }
+      
       console.log('🎯 [VISION SERVICE] Final result:', finalResult)
+      console.log('📱 [VISION SERVICE] Current App:', currentApp || 'Not detected')
+      console.log('🎮 [VISION SERVICE] Current Activity:', currentActivity || 'Not detected')
       
       return finalResult
     } catch (parseError) {
@@ -96,7 +111,12 @@ export const checkFocusWithVision = async (
       // Fallback: accept plain true/false responses
       const lowered = text.toLowerCase()
       const focused = lowered === 'true'
-      const fallbackResult = { focused, user_activity: focused ? 'study screen' : 'other activity' }
+      const fallbackResult = { 
+        focused, 
+        user_activity: focused ? 'study screen' : 'other activity',
+        current_app: undefined,
+        current_activity: undefined
+      }
       
       console.log('🔄 [VISION SERVICE] Fallback result:', fallbackResult)
       return fallbackResult
@@ -109,7 +129,12 @@ export const checkFocusWithVision = async (
       stack: error.stack
     })
     // Default to focused on error to avoid unnecessary interruption
-    const errorResult = { focused: true, user_activity: 'study screen' }
+    const errorResult = { 
+      focused: true, 
+      user_activity: 'study screen',
+      current_app: undefined,
+      current_activity: undefined
+    }
     console.log('🛡️ [VISION SERVICE] Returning safe default due to error:', errorResult)
     return errorResult
   }

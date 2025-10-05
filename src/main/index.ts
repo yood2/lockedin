@@ -8,6 +8,12 @@ import captureService from '../services/capture.service'
 import { analyzeScreenshotWithGemini } from '../services/llm.service'
 import { checkFocusWithVision } from './services/vision.service'
 
+// Global variables to store extracted app information
+declare global {
+  var currentApp: string | undefined
+  var currentActivity: string | undefined
+}
+
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -237,6 +243,13 @@ ipcMain.on('exit-app', () => {
   app.quit()
 })
 
+ipcMain.handle('get-current-app-info', () => {
+  return {
+    currentApp: global.currentApp,
+    currentActivity: global.currentActivity
+  }
+})
+
 ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
   try {
     // Persist webcam snapshot to disk for debugging
@@ -273,8 +286,19 @@ ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
       console.warn('Invalid webcam DataURL received; skipping save')
     }
 
-    const { focused, user_activity } = await checkFocusWithVision(imageDataUrl)
-    return { focused, user_activity }
+    const { focused, user_activity, current_app, current_activity } = await checkFocusWithVision(imageDataUrl)
+    
+    // Log the extracted application and activity information
+    console.log('📱 [MAIN] Extracted App Information:', {
+      current_app: current_app || 'Not detected',
+      current_activity: current_activity || 'Not detected'
+    })
+    
+    // Store these values in variables for later use
+    global.currentApp = current_app
+    global.currentActivity = current_activity
+    
+    return { focused, user_activity, current_app, current_activity }
   } catch (error) {
     console.error('Failed to check focus:', error)
     return { focused: true, user_activity: 'study screen' } // Default on error

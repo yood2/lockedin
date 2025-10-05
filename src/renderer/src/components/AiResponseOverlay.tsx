@@ -12,6 +12,26 @@ export const AiResponseOverlayContainer = (): React.JSX.Element => {
   const handleAiResponse = useCallback((newResponse: string, error: boolean) => {
     setResponse(newResponse)
     setIsError(error)
+    
+    // Check if response is a short positive feedback (≤4 words)
+    const wordCount = newResponse.trim().split(/\s+/).length
+    const isShortPositive = wordCount <= 4 && 
+      (newResponse.toLowerCase().includes('good job') || 
+       newResponse.toLowerCase().includes('great') ||
+       newResponse.toLowerCase().includes('well done') ||
+       newResponse.toLowerCase().includes('keep it up') ||
+       newResponse.toLowerCase().includes('nice work'))
+    
+    // Don't show overlay for short positive responses
+    if (isShortPositive) {
+      console.log('🎉 [OVERLAY] Short positive response detected, hiding overlay:', newResponse)
+      setShowResponse(false)
+      dismissOverlay()
+      return
+    }
+    
+    // Show overlay for longer responses or errors
+    console.log('📢 [OVERLAY] Showing overlay for response:', newResponse)
     setShowResponse(true)
     
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
