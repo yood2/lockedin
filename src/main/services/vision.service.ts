@@ -40,41 +40,77 @@ function dataUrlToGcsPart(dataUrl: string): { inlineData: { mimeType: string; da
 export const checkFocusWithVision = async (
   imageDataUrl: string
 ): Promise<{ focused: boolean; user_activity: string }> => {
+  console.log('🔍 [VISION SERVICE] Starting focus check...')
+  console.log('📷 [VISION SERVICE] Image data URL length:', imageDataUrl.length)
+  
   initialize()
   if (!genAI) {
     throw new Error('Generative AI SDK not initialized.')
   }
 
   try {
+    console.log('🤖 [VISION SERVICE] Using model: gemini-2.5-flash')
     // Switch to a supported multimodal model
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
     const imagePart = dataUrlToGcsPart(imageDataUrl)
+    console.log('📤 [VISION SERVICE] Sending request to Gemini API...')
 
     const result = await model.generateContent([focusPrompt, imagePart])
     const response = await result.response
     const text = response.text().trim()
+    
+    console.log('📥 [VISION SERVICE] Raw AI response:', text)
+
+    // Clean the response text by removing markdown code blocks if present
+    let cleanedText = text.trim()
+    if (cleanedText.startsWith('```json') && cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(7, -3).trim() // Remove ```json and ```
+      console.log('🧹 [VISION SERVICE] Cleaned response (removed markdown):', cleanedText)
+    } else if (cleanedText.startsWith('```') && cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(3, -3).trim() // Remove ``` and ```
+      console.log('🧹 [VISION SERVICE] Cleaned response (removed markdown):', cleanedText)
+    }
 
     // Try to parse strict JSON first
     try {
-      const parsed = JSON.parse(text)
+      const parsed = JSON.parse(cleanedText)
+      console.log('✅ [VISION SERVICE] Successfully parsed JSON:', parsed)
+      
       const focused = Boolean(parsed?.focused)
       let userActivity = typeof parsed?.user_activity === 'string' ? parsed.user_activity : ''
       
       // If not focused but no activity provided, use a default
       if (!focused && !userActivity) {
         userActivity = 'other activity'
+        console.log('⚠️ [VISION SERVICE] No activity provided for unfocused state, using default')
       }
       
-      return { focused, user_activity: userActivity }
-    } catch (_) {
+      const finalResult = { focused, user_activity: userActivity }
+      console.log('🎯 [VISION SERVICE] Final result:', finalResult)
+      
+      return finalResult
+    } catch (parseError) {
+      console.log('❌ [VISION SERVICE] JSON parse failed, trying fallback parsing')
+      console.log('🔧 [VISION SERVICE] Parse error:', parseError)
+      
       // Fallback: accept plain true/false responses
       const lowered = text.toLowerCase()
       const focused = lowered === 'true'
-      return { focused, user_activity: focused ? 'study screen' : 'other activity' }
+      const fallbackResult = { focused, user_activity: focused ? 'study screen' : 'other activity' }
+      
+      console.log('🔄 [VISION SERVICE] Fallback result:', fallbackResult)
+      return fallbackResult
     }
   } catch (error) {
-    console.error('Error checking focus with Vision API:', error)
+    console.error('💥 [VISION SERVICE] Error checking focus with Vision API:', error)
+    console.error('📋 [VISION SERVICE] Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    })
     // Default to focused on error to avoid unnecessary interruption
-    return { focused: true, user_activity: 'study screen' }
+    const errorResult = { focused: true, user_activity: 'study screen' }
+    console.log('🛡️ [VISION SERVICE] Returning safe default due to error:', errorResult)
+    return errorResult
   }
 }
