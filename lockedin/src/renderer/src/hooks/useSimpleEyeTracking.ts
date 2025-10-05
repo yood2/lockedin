@@ -1,9 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, RefObject } from 'react';
+import { useWebGazer } from './useWebGazer';
+import webgazer from 'webgazer';
 
 // WebGazer types
 interface WebGazerPrediction {
   x: number
   y: number
+}
+
+interface CalibrationPoint {
+  x: number;
+  y: number;
 }
 
 interface EyeTrackingState {
@@ -13,227 +20,141 @@ interface EyeTrackingState {
   isInitialized: boolean
   gazeX?: number
   gazeY?: number
+  isCalibrating: boolean
+  calibrationProgress: number
+  calibrationPoints: CalibrationPoint[]
+  currentCalibrationIndex: number
+  faceDetected?: boolean
 }
 
-// Declare WebGazer global
-declare global {
-  interface Window {
-    webgazer: {
-      begin: () => Promise<void>
-      end: () => void
-      pause: () => void
-      resume: () => void
-      setGazeListener: (callback: (data: WebGazerPrediction | null, clock: number) => void) => void
-      setRegression: (regression: string) => void
-      showVideoPreview: (show: boolean) => void
-      showFaceOverlay: (show: boolean) => void
-      showFaceFeedbackBox: (show: boolean) => void
-    }
-  }
-}
+const CALIBRATION_POINTS: CalibrationPoint[] = [
+  { x: 0.1, y: 0.1 }, { x: 0.5, y: 0.1 }, { x: 0.9, y: 0.1 },
+  { x: 0.1, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.9, y: 0.5 },
+  { x: 0.1, y: 0.9 }, { x: 0.5, y: 0.9 }, { x: 0.9, y: 0.9 }
+];
 
-export const useSimpleEyeTracking = () => {
+
+export const useSimpleEyeTracking = (videoRef: RefObject<HTMLVideoElement> | null) => {
+  const { status: webGazerStatus, error: webGazerError } = useWebGazer(videoRef);
+  
   const [state, setState] = useState<EyeTrackingState>({
     isLookingAtScreen: true,
     lastLookTime: Date.now(),
     sessionDuration: 0,
-    isInitialized: false
-  })
+    isInitialized: false,
+    isCalibrating: false,
+    calibrationProgress: 0,
+    calibrationPoints: CALIBRATION_POINTS,
+    currentCalibrationIndex: 0,
+    faceDetected: false
+  });
   
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const durationIntervalRef = useRef<number | null>(null)
-  const lookAwayTimerRef = useRef<number | null>(null)
-  const fallbackIntervalRef = useRef<number | null>(null)
+  const durationIntervalRef = useRef<number | null>(null);
 
-  const initialize = useCallback(async () => {
-    try {
-      if (!window.webgazer) {
-        console.error('WebGazer not loaded')
-        return false
-      }
-
-      console.log('Initializing WebGazer...')
+  useEffect(() => {
+    if (webGazerStatus === 'ready') {
+      console.log('🔧 Configuring WebGazer settings...');
+      webgazer.setRegression('ridge');
+      webgazer.showVideoPreview(false);
+      webgazer.showFaceOverlay(false);
+      webgazer.showFaceFeedbackBox(false);
+      webgazer.showPredictionPoints(false);
       
-      window.webgazer.setRegression('ridge')
-      window.webgazer.showVideoPreview(false)
-      window.webgazer.showFaceOverlay(false)
-      window.webgazer.showFaceFeedbackBox(false)
-      
-      window.webgazer.setGazeListener((data: WebGazerPrediction | null, clock: number) => {
-        const now = Date.now()
-        
-        // --- MODIFICATION START ---
-        // Instead of checking coordinates, we check if a prediction exists at all.
-        // If 'data' is not null, it means a face is detected.
-        const isLookingAtScreen = data !== null;
-        // --- MODIFICATION END ---
+      console.log('🎧 Attaching Gaze Listener...');
+      webgazer.setGazeListener((data: WebGazerPrediction | null) => {
+        if (data) {
+          const { x, y } = data;
+          const now = Date.now();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          const margin = 150;
 
-        if (isLookingAtScreen) {
-          if (lookAwayTimerRef.current) {
-            clearTimeout(lookAwayTimerRef.current)
-            lookAwayTimerRef.current = null
-          }
+          const isLooking = x >= -margin && x <= viewportWidth + margin && y >= -margin && y <= viewportHeight + margin;
           
+          console.log(`👁️ Gaze: (${x.toFixed(1)}, ${y.toFixed(1)}) | On Screen: ${isLooking}`);
+
           setState(prev => ({
             ...prev,
-            isLookingAtScreen: true,
-            lastLookTime: now,
-            gazeX: data.x,
-            gazeY: data.y,
+            isLookingAtScreen: isLooking,
+            lastLookTime: isLooking ? now : prev.lastLookTime,
+            gazeX: x,
+            gazeY: y,
+            faceDetected: true,
             isInitialized: true
-          }))
-          
+          }));
         } else {
-          // data is null, which is a strong indicator that the face is not visible.
-          if (state.isLookingAtScreen) { // Only update state on change
-            setState(prev => ({
-              ...prev,
-              isLookingAtScreen: false,
-              isInitialized: true
-            }))
-            console.log('WebGazer - Face lost, user is looking away.');
-          }
+            console.log('🚫 No face detected.');
+            setState(prev => ({ ...prev, faceDetected: false, isLookingAtScreen: false }));
         }
-      })
+      });
       
-      await window.webgazer.begin()
-      
-      console.log('WebGazer initialized successfully')
-      return true
-      
-    } catch (error) {
-      console.error('Failed to initialize WebGazer:', error)
-      console.log('Falling back to simple camera detection...')
-      
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            width: 640, 
-            height: 480,
-            facingMode: 'user'
-          } 
-        })
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          
-          const checkForFace = () => {
-            if (!videoRef.current) return
-            
-            const canvas = document.createElement('canvas')
-            const ctx = canvas.getContext('2d')
-            if (!ctx) return
-            
-            canvas.width = videoRef.current.videoWidth
-            canvas.height = videoRef.current.videoHeight
-            ctx.drawImage(videoRef.current, 0, 0)
-            
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const data = imageData.data
-            
-            let totalBrightness = 0
-            let pixelCount = 0
-            
-            for (let i = 0; i < data.length; i += 4) {
-              const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3
-              totalBrightness += brightness
-              pixelCount++
-            }
-            
-            const averageBrightness = totalBrightness / pixelCount
-            const hasFace = averageBrightness > 30 && averageBrightness < 200
-            
-            setState(prev => ({
-              ...prev,
-              isLookingAtScreen: hasFace,
-              lastLookTime: hasFace ? Date.now() : prev.lastLookTime,
-              isInitialized: true
-            }))
-          }
-          
-          fallbackIntervalRef.current = setInterval(checkForFace, 500) as unknown as number
-          return true
-        }
-      } catch (fallbackError) {
-        console.error('Fallback detection also failed:', fallbackError)
-      }
-      
-      return false
+      setState(prev => ({ ...prev, isInitialized: true }));
     }
-  }, [state.isLookingAtScreen])
+  }, [webGazerStatus]);
 
-  const cleanup = useCallback(() => {
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current)
-      durationIntervalRef.current = null
+  const startCalibration = useCallback(async () => {
+    if (webGazerStatus !== 'ready') {
+      console.error("❌ Cannot calibrate: WebGazer is not ready.");
+      return;
     }
-    
-    if (lookAwayTimerRef.current) {
-      clearTimeout(lookAwayTimerRef.current)
-      lookAwayTimerRef.current = null
-    }
-    
-    if (fallbackIntervalRef.current) {
-      clearInterval(fallbackIntervalRef.current)
-      fallbackIntervalRef.current = null
-    }
-    
-    if (window.webgazer) {
-      try {
-        window.webgazer.end()
-        console.log('WebGazer stopped')
-      } catch (error) {
-        console.error('Error stopping WebGazer:', error)
-      }
-    }
-    
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
-      stream.getTracks().forEach(track => track.stop())
-      videoRef.current.srcObject = null
-    }
-  }, [])
-
-  const toggleLookingState = useCallback(() => {
+    console.log('🎯 Starting WebGazer calibration...');
+    await webgazer.clearData();
     setState(prev => ({
       ...prev,
-      isLookingAtScreen: !prev.isLookingAtScreen,
-      lastLookTime: prev.isLookingAtScreen ? Date.now() : prev.lastLookTime
-    }))
-  }, [])
+      isCalibrating: true,
+      calibrationProgress: 0,
+      currentCalibrationIndex: 0
+    }));
+  }, [webGazerStatus]);
 
-  useEffect(() => {
-    if (state.isLookingAtScreen && state.isInitialized) {
-      durationIntervalRef.current = setInterval(() => {
+  const handleCalibrationClick = useCallback(() => {
+    const currentIndex = state.currentCalibrationIndex;
+    if (!state.isCalibrating || currentIndex >= state.calibrationPoints.length) return;
+    
+    const nextIndex = currentIndex + 1;
+    const progress = (nextIndex / state.calibrationPoints.length) * 100;
+    
+    console.log(`✅ Clicked calibration point ${nextIndex}/${state.calibrationPoints.length}`);
+
+    if (nextIndex >= state.calibrationPoints.length) {
+        setState(prev => ({ ...prev, isCalibrating: false, calibrationProgress: 100 }));
+        console.log('✅ WebGazer calibration completed!');
+    } else {
         setState(prev => ({
           ...prev,
-          sessionDuration: prev.sessionDuration + 1
-        }))
-      }, 1000) as unknown as number
-    } else {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current)
-        durationIntervalRef.current = null
-      }
+          currentCalibrationIndex: nextIndex,
+          calibrationProgress: progress
+        }));
     }
-
-    return () => {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current)
-        durationIntervalRef.current = null
-      }
-    }
-  }, [state.isLookingAtScreen, state.isInitialized])
+  }, [state.currentCalibrationIndex, state.isCalibrating, state.calibrationPoints.length]);
 
   useEffect(() => {
-    return cleanup
-  }, [cleanup])
+    let intervalId: number | null = null;
+    if (state.isLookingAtScreen && state.isInitialized) {
+      console.log('⏱️  Starting duration timer');
+      intervalId = setInterval(() => {
+        setState(prev => ({ ...prev, sessionDuration: prev.sessionDuration + 1 }));
+      }, 1000) as unknown as number;
+    } else {
+        if (durationIntervalRef.current) {
+            console.log('⏸️  Pausing duration timer');
+        }
+    }
+    
+    durationIntervalRef.current = intervalId;
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [state.isLookingAtScreen, state.isInitialized]);
 
   return {
     state,
-    videoRef,
-    initialize,
-    cleanup,
-    toggleLookingState
-  }
-}
+    webGazerStatus,
+    webGazerError,
+    startCalibration,
+    handleCalibrationClick,
+  };
+};
