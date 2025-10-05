@@ -61,9 +61,19 @@ export const checkFocusWithVision = async (
     
     console.log('📥 [VISION SERVICE] Raw AI response:', text)
 
+    // Clean the response text by removing markdown code blocks if present
+    let cleanedText = text.trim()
+    if (cleanedText.startsWith('```json') && cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(7, -3).trim() // Remove ```json and ```
+      console.log('🧹 [VISION SERVICE] Cleaned response (removed markdown):', cleanedText)
+    } else if (cleanedText.startsWith('```') && cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(3, -3).trim() // Remove ``` and ```
+      console.log('🧹 [VISION SERVICE] Cleaned response (removed markdown):', cleanedText)
+    }
+
     // Try to parse strict JSON first
     try {
-      const parsed = JSON.parse(text)
+      const parsed = JSON.parse(cleanedText)
       console.log('✅ [VISION SERVICE] Successfully parsed JSON:', parsed)
       
       const focused = Boolean(parsed?.focused)
