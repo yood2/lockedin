@@ -20,7 +20,6 @@ const IntentionInput = ({ onStartSession }: { onStartSession: (intention: string
 
   return (
     <form className="intention-input-form" onSubmit={handleSubmit}>
-      <img alt="logo" className="logo" src={electronLogo} />
       <div className="creator">Enter your session intention</div>
       <input
         ref={inputRef}
@@ -102,7 +101,7 @@ function App(): React.JSX.Element {
   }
 
   const handleHide = () => {
-    window.api.hideSession()
+    window.api.hideSession(sessionViewWidth)
     setAppState(AppState.Hidden)
   }
 

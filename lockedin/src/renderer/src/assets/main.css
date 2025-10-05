@@ -9,7 +9,7 @@ body {
   background-size: cover;
   user-select: none;
   -webkit-app-region: drag; /* Enable drag for frameless window */
-  padding: 20px; /* Add padding for content */
+  padding: 0; /* Add padding for content */
 }
 
 /* New container for content to restore click/input regions and manage background */
@@ -96,19 +96,18 @@ body {
 
 /* Styles for Hidden Overlay View (Small Button) */
 #root-content.app-state-hidden {
-  background-color: transparent;
-  border: none;
+  background-color: rgba(0, 0, 0, 0.7); /* Translucent black background */
+  border: 1px solid #6988e6; /* Added a border for definition */
   padding: 0;
-  width: 60px; /* Match main.ts overlaySize */
-  height: 60px; /* Match main.ts overlaySize */
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  height: 60px;
+  box-shadow: none;
 }
 
 .hidden-overlay {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: space-around;
   position: relative;
   background-color: transparent;
   width: 100%;
