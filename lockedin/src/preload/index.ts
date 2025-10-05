@@ -8,12 +8,29 @@ export const api = {
   startSession: (width: number, height: number): void => ipcRenderer.send('start-session', width, height),
   minimizeWindow: (): void => ipcRenderer.send('minimize-window'),
   showSession: (width: number, height: number): void => ipcRenderer.send('show-session', width, height),
+<<<<<<< HEAD
   exitApp: (): void => {
     ipcRenderer.send('exit-app')
   },
   checkFocus: (imageDataUrl: string): Promise<boolean> => {
     return ipcRenderer.invoke('check-focus', imageDataUrl)
   }
+=======
+  exitApp: (): void => ipcRenderer.send('exit-app'),
+  onAiResponse: (callback: (response: string, isError: boolean) => void): (() => void) => {
+    const updateHandler = (_event: Electron.IpcRendererEvent, response: string) => callback(response, false)
+    const errorHandler = (_event: Electron.IpcRendererEvent, response: string) => callback(response, true)
+
+    ipcRenderer.on('ai-response-update', updateHandler)
+    ipcRenderer.on('ai-response-error', errorHandler)
+    
+    return () => {
+        ipcRenderer.off('ai-response-update', updateHandler)
+        ipcRenderer.off('ai-response-error', errorHandler)
+    }
+  },
+  dismissOverlay: (): void => ipcRenderer.send('overlay-dismissed')
+>>>>>>> origin/main
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

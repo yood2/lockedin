@@ -1,4 +1,6 @@
-# Locked In - Storm Hacks 2025
+# LockedIn - StormHacks 2025
+
+Lock in brotha
 
 ### Setup
 1. `cd lockedin`

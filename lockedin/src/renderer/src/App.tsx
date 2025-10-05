@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
+<<<<<<< HEAD
+=======
+import { AnimatePresence, motion } from 'framer-motion'
+import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
+>>>>>>> origin/main
 
 // --- Components for different views ---
 
@@ -251,6 +256,14 @@ const inputViewWidth = 400
 const inputViewHeight = 260
 
 function App(): React.JSX.Element {
+
+  const isOverlay = new URLSearchParams(window.location.search).get('overlay') === 'true'
+                  || window.location.hash === '#overlay'
+
+  if (isOverlay) {
+    return <AiResponseOverlayContainer />
+  }
+
   const [appState, setAppState] = useState<AppState>(AppState.Input)
   const [duration, setDuration] = useState(25)
 
