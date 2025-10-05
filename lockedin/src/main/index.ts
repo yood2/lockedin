@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -8,9 +8,12 @@ import { analyzeScreenshotWithGemini } from '../services/llm.service'
 
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
+let overlayWindow: BrowserWindow | null = null
 
 const initialWidth = 400
 const initialHeight = 260
+const overlayWidth = 600
+const overlayHeight = 100
 
 function createWindow(): void {
   // Create the browser window.
@@ -53,16 +56,62 @@ function createWindow(): void {
   }
 }
 
+function createOverlayWindow(): void {
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const screenWidth = primaryDisplay.workAreaSize.width
+  const screenHeight = primaryDisplay.workAreaSize.height
+
+  overlayWindow = new BrowserWindow({
+    width: overlayWidth,
+    height: overlayHeight,
+    x: Math.floor((screenWidth - overlayWidth) / 2), // Center horizontally
+    y: screenHeight - overlayHeight - 20, // Position at the bottom, with a margin
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+  
+  // Set to ignore mouse events so clicks pass through by default
+  overlayWindow.setIgnoreMouseEvents(true) // <-- IMPORTANT
+
+  // Load the same HTML file but pass a query parameter for conditional rendering
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    overlayWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?overlay=true`)
+  } else {
+    // Note: 'query' option in loadFile only works in Electron 28+
+    overlayWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'overlay' })
+  }
+}
+
 // Global variables for session and capture management
 let sessionIntention: string | null = null
 let captureInterval: NodeJS.Timeout | null = null
+
+function updateOverlayVisibility(isVisible: boolean): void {
+    if (!overlayWindow) return
+
+    if (isVisible) {
+        overlayWindow.showInactive()
+        overlayWindow.setIgnoreMouseEvents(false)
+    } else {
+        overlayWindow.setIgnoreMouseEvents(true)
+    }
+}
 
 /**
  * Captures a screenshot of the desktop and stores the image in a buffer.
  * This function is called by the interval.
  */
 async function performScreenCapture(): Promise<void> {
-  // Only capture the screen if a session is active (intention is set)
   if (!sessionIntention) {
     console.log('No session intention set, skipping screenshot.')
     return
@@ -72,13 +121,17 @@ async function performScreenCapture(): Promise<void> {
     console.log('Capturing screen...')
     const result = await captureService.captureAndProcess()
     console.log(`Screenshot captured successfully. Path: ${result.localPath}`)
-    // The image buffer is available in result.imageBuffer if needed for next steps.
     
     // Clean up old screenshots, keeping only the most recent 10
     captureService.cleanupOldScreenshots(10)
     console.log('Cleaned up old screenshots, keeping the last 10.')
     console.log('Calling Gemini API...')
-    var textResult = analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
+    var textResult = await analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
+
+    if (overlayWindow) {
+      overlayWindow.webContents.send('ai-response-update', textResult)
+      updateOverlayVisibility(true)
+    }
     console.log('Gemini answer: ', textResult)
 
   } catch (error) {
@@ -126,7 +179,12 @@ ipcMain.on('show-session', (_event, width: number, height: number) => {
 ipcMain.on('exit-app', () => {
   // Stop the interval when exiting
   if (captureInterval) clearInterval(captureInterval)
+  if (overlayWindow) overlayWindow.close()
   app.quit()
+})
+
+ipcMain.on('overlay-dismissed', () => {
+  updateOverlayVisibility(false)
 })
 
 // This method will be called when Electron has finished
@@ -140,9 +198,11 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  createOverlayWindow()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (!overlayWindow) createOverlayWindow()
   })
 })
 
@@ -150,6 +210,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   // Stop the interval when all windows are closed
   if (captureInterval) clearInterval(captureInterval)
+  if (overlayWindow) overlayWindow.close()
   if (process.platform !== 'darwin') {
     app.quit()
   }

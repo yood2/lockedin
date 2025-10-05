@@ -26,6 +26,14 @@ body {
   min-height: 160px;
 }
 
+#ai-response-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
 /* Styles for Intention Input View */
 .intention-input-form {
   display: flex;
