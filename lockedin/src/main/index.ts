@@ -1,7 +1,8 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, desktopCapturer, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { promises as fs } from 'fs'
 
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
@@ -50,8 +51,40 @@ function createWindow(): void {
   }
 }
 
-// Global variable to store session intention
 let sessionIntention: string | null = null
+let screenshotInterval: NodeJS.Timeout | null = null
+
+const screenshotsDir = join(__dirname, '../../screenshots')
+
+async function takeScreenshot() {
+  try {
+    await fs.mkdir(screenshotsDir, { recursive: true })
+
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: primaryDisplay.size.width, height: primaryDisplay.size.height }
+    })
+
+    const primarySource = sources.find(source => source.display_id.toString() === primaryDisplay.id.toString())
+    if (!primarySource) {
+      console.error('Primary screen source not found.')
+      return
+    }
+    
+    // Capture the entire screen
+    const thumbnail = primarySource.thumbnail.toPNG() // Get as PNG Buffer
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const filename = `screenshot-${timestamp}.png`
+    const filePath = join(screenshotsDir, filename)
+
+    await fs.writeFile(filePath, thumbnail)
+    console.log(`Screenshot saved to: ${filePath}`)
+
+  } catch (error) {
+    console.error('Error taking or saving screenshot:', error)
+  }
+}
 
 // IPC Handlers
 ipcMain.on('set-intention', (event, intention: string) => {
@@ -71,6 +104,24 @@ ipcMain.on('start-session', (event, width: number, height: number) => {
   }
 })
 
+ipcMain.on('start-screenshot-timer', () => {
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval)
+  }
+  // Take screenshot immediately and then every 10 seconds (10000ms)
+  takeScreenshot()
+  screenshotInterval = setInterval(takeScreenshot, 10000)
+  console.log('Screenshot timer started. Interval: 10 seconds.')
+})
+
+ipcMain.on('stop-screenshot-timer', () => {
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval)
+    screenshotInterval = null
+    console.log('Screenshot timer stopped.')
+  }
+})
+
 ipcMain.on('minimize-window', () => {
   if (mainWindow) {
     mainWindow.minimize()
@@ -86,6 +137,9 @@ ipcMain.on('show-session', (event, width: number, height: number) => {
 })
 
 ipcMain.on('exit-app', () => {
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval)
+  }
   app.quit()
 })
 
