@@ -125,6 +125,7 @@ const SessionInProgress = ({
     if (!isFocused && userActivity) {
       console.log('✅ Off-task detected, showing splash:', userActivity)
       setShowSplash(true)
+      window.api.restoreWindowAndFocus()
     } else if (!isFocused && !userActivity) {
       console.log('⚠️ Off-task but no userActivity yet')
     } else if (isFocused) {

@@ -24,6 +24,7 @@ declare global {
         longestUnfocusedStreakSec: number
       }>
       endSession: () => void
+      restoreWindowAndFocus: () => void
     }
   }
 }

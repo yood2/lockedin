@@ -285,6 +285,16 @@ ipcMain.on('show-session', (_event, width: number, height: number) => {
   }
 })
 
+ipcMain.on('restore-window-and-focus', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+    mainWindow.show()
+    mainWindow.focus() // Bring the window to the front
+  }
+})
+
 ipcMain.on('overlay-dismissed', () => {
     if (overlayWindow) {
         overlayWindow.hide()
