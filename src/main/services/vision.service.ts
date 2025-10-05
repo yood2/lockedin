@@ -10,6 +10,7 @@ Rules:
 
 Output STRICT JSON only, no prose:
 {"focused": <true|false>, "user_activity": "<≤3 words>"}
+Give the app that I am currently using as the "current_app" and the activity I'm interacting with the app as the "current_activity".
 `
 
 let genAI: GoogleGenerativeAI | null = null
