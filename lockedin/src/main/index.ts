@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
-import fs from 'fs'
+import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import captureService from '../services/capture.service'
@@ -157,10 +157,10 @@ ipcMain.on('start-session', (_event, width: number, height: number) => {
     mainWindow.setSize(width, height)
     mainWindow.center()
 
-    // Start the 20-second screenshot interval
+    // Start the 15-second screenshot interval
     if (captureInterval) clearInterval(captureInterval) // Clear any old interval
-    captureInterval = setInterval(performScreenCapture, 20000)
-    console.log('Session started. Capturing screen every 20 seconds.')
+    captureInterval = setInterval(performScreenCapture, 15000)
+    console.log('Session started. Capturing screen every 15 seconds.')
   }
 })
 
@@ -221,11 +221,11 @@ ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
       console.warn('Invalid webcam DataURL received; skipping save')
     }
 
-    const isFocused = await checkFocusWithVision(imageDataUrl)
-    return isFocused
+    const { focused, user_activity } = await checkFocusWithVision(imageDataUrl)
+    return { focused, user_activity }
   } catch (error) {
     console.error('Failed to check focus:', error)
-    return true // Default to focused on error
+    return { focused: true, user_activity: 'study screen' } // Default on error
   }
 })
 

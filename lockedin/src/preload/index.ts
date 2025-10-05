@@ -8,7 +8,7 @@ export const api = {
   startSession: (width: number, height: number): void => ipcRenderer.send('start-session', width, height),
   minimizeWindow: (): void => ipcRenderer.send('minimize-window'),
   showSession: (width: number, height: number): void => ipcRenderer.send('show-session', width, height),
-  checkFocus: (imageDataUrl: string): Promise<boolean> => {
+  checkFocus: (imageDataUrl: string): Promise<boolean | { focused: boolean; user_activity: string }> => {
     return ipcRenderer.invoke('check-focus', imageDataUrl)
   },
   exitApp: (): void => ipcRenderer.send('exit-app'),

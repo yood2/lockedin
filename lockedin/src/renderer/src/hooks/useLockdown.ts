@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 export const useLockdown = () => {
   const [isFocused, setIsFocused] = useState(true)
   const [isChecking, setIsChecking] = useState(false)
+  const [userActivity, setUserActivity] = useState<string>('')
   const videoRef = useRef<HTMLVideoElement>(null)
   const intervalRef = useRef<number | null>(null)
 
@@ -25,8 +26,8 @@ export const useLockdown = () => {
         console.error('Failed to get webcam access:', err)
       })
 
-    // Check focus every 20 seconds
-    intervalRef.current = setInterval(checkFocus, 20000) as unknown as number
+    // Check focus every 15 seconds
+    intervalRef.current = setInterval(checkFocus, 15000) as unknown as number
   }
 
   const stop = () => {
@@ -64,15 +65,32 @@ export const useLockdown = () => {
     try {
       console.log('Sending webcam snapshot for focus check...')
       const result = await window.api.checkFocus(imageDataUrl)
-      setIsFocused(result)
-      console.log(`Focus check complete. isFocused=${result}`)
+      // Support both legacy boolean and new structured response
+      if (typeof result === 'boolean') {
+        setIsFocused(result)
+        setUserActivity('')
+        console.log(`Focus check complete. isFocused=${result}`)
+      } else {
+        setIsFocused(Boolean(result?.focused))
+        setUserActivity((result?.user_activity || '').toString())
+        console.log(
+          `Focus check complete. isFocused=${Boolean(result?.focused)} activity="${(result?.user_activity || '').toString()}"`
+        )
+      }
     } catch (error) {
       console.error('Focus check failed:', error)
       // Default to focused to avoid interrupting the user on API errors
       setIsFocused(true)
+      setUserActivity('')
     } finally {
       setIsChecking(false)
     }
+  }
+
+  const resetFocus = () => {
+    console.log('Manually resetting focus to true')
+    setIsFocused(true)
+    setUserActivity('')
   }
 
   useEffect(() => {
@@ -85,6 +103,8 @@ export const useLockdown = () => {
   return {
     isFocused,
     isChecking,
-    videoRef
+    userActivity,
+    videoRef,
+    resetFocus
   }
 }

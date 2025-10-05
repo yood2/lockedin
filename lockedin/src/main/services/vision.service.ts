@@ -1,11 +1,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const focusPrompt = `
-Is this person focused on studying? They should be looking at their screen, preferably at the center.
-If their eyes are closed, they are not studying. If they are looking away from the screen, they are not studying.
-If they are on their phone, they are not studying. The user's camera may be mirrored.
+You are classifying webcam images for study focus.
 
-Respond with only the word "true" or "false".
+Rules:
+- If eyes are closed, or looking away from the screen, or looking at a phone, then not focused.
+- The camera may be mirrored.
+- "user_activity" must summarize the main activity (≤ 3 words), lowercase, no punctuation. Examples: "watch phone", "look away", "eyes closed", "study screen".
+
+Output STRICT JSON only, no prose:
+{"focused": <true|false>, "user_activity": "<≤3 words>"}
 `
 
 let genAI: GoogleGenerativeAI | null = null
@@ -32,7 +36,9 @@ function dataUrlToGcsPart(dataUrl: string): { inlineData: { mimeType: string; da
   }
 }
 
-export const checkFocusWithVision = async (imageDataUrl: string): Promise<boolean> => {
+export const checkFocusWithVision = async (
+  imageDataUrl: string
+): Promise<{ focused: boolean; user_activity: string }> => {
   initialize()
   if (!genAI) {
     throw new Error('Generative AI SDK not initialized.')
@@ -45,13 +51,29 @@ export const checkFocusWithVision = async (imageDataUrl: string): Promise<boolea
 
     const result = await model.generateContent([focusPrompt, imagePart])
     const response = await result.response
-    const text = response.text().trim().toLowerCase()
+    const text = response.text().trim()
 
-    return text === 'true'
+    // Try to parse strict JSON first
+    try {
+      const parsed = JSON.parse(text)
+      const focused = Boolean(parsed?.focused)
+      let userActivity = typeof parsed?.user_activity === 'string' ? parsed.user_activity : ''
+      
+      // If not focused but no activity provided, use a default
+      if (!focused && !userActivity) {
+        userActivity = 'other activity'
+      }
+      
+      return { focused, user_activity: userActivity }
+    } catch (_) {
+      // Fallback: accept plain true/false responses
+      const lowered = text.toLowerCase()
+      const focused = lowered === 'true'
+      return { focused, user_activity: focused ? 'study screen' : 'other activity' }
+    }
   } catch (error) {
     console.error('Error checking focus with Vision API:', error)
-    // In case of an error, default to assuming the user is focused
-    // to avoid penalizing them for API or network issues.
-    return true
+    // Default to focused on error to avoid unnecessary interruption
+    return { focused: true, user_activity: 'study screen' }
   }
 }
