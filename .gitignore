@@ -9,3 +9,4 @@
 *screenshots*
 *webcam*
 *.env*
+.env*.local
