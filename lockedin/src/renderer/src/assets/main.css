@@ -1,4 +1,5 @@
 @import './base.css';
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
 body {
   display: flex;
@@ -9,7 +10,7 @@ body {
   background-size: cover;
   user-select: none;
   -webkit-app-region: drag; /* Enable drag for frameless window */
-  padding: 20px; /* Add padding for content */
+  padding: 0; /* Add padding for content */
 }
 
 /* New container for content to restore click/input regions and manage background */
@@ -18,12 +19,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  -webkit-app-region: no-drag; /* Disable drag inside content */
   padding: 20px;
   background-color: var(--ev-c-black-soft); /* Solid background for content */
-  border: 1px solid var(--ev-c-gray-1);
   border-radius: 10px;
-  /* Add minimum size for initial input view */
   min-width: 360px;
   min-height: 160px;
 }
@@ -35,6 +33,7 @@ body {
   align-items: center;
   text-align: center;
   width: 100%;
+  -webkit-app-region: no-drag;
 }
 
 .intention-input {
@@ -49,8 +48,26 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.duration-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.duration-input {
+  max-width: 80px;
+  text-align: center;
+  margin: 5px 0 0 0; /* Adjust margin for proper spacing */
+}
+
 .intention-input::placeholder {
   color: var(--ev-c-text-3);
+}
+
+button {
+  -webkit-app-region: no-drag;
 }
 
 .start-button {
@@ -79,8 +96,12 @@ body {
   margin-top: 5px;
 }
 
-.hide-button {
-  /* Default alt button style */
+.session-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
 }
 
 .exit-button {
@@ -93,70 +114,6 @@ body {
   background-color: #cc4444;
   border-color: #cc4444;
 }
-
-/* Styles for Hidden Overlay View (Small Button) */
-#root-content.app-state-hidden {
-  background-color: transparent;
-  border: none;
-  padding: 0;
-  width: 60px; /* Match main.ts overlaySize */
-  height: 60px; /* Match main.ts overlaySize */
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-}
-
-.hidden-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background-color: transparent;
-  width: 100%;
-  height: 100%;
-}
-
-.show-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #6988e6;
-  color: var(--ev-c-white);
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-  line-height: 40px;
-  font-size: 20px;
-  padding: 0;
-}
-
-.show-button:hover {
-  background-color: #4b66b8;
-}
-
-.exit-hidden-button {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #ff5555;
-  color: white;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-  line-height: 1; 
-  font-size: 16px;
-  padding: 0;
-}
-
-.exit-hidden-button:hover {
-  background-color: #cc4444;
-}
-
-/* Original styles adjusted or hidden */
 
 .logo {
   margin-bottom: 20px;
@@ -195,4 +152,231 @@ body {
   .actions {
     justify-content: center;
   }
+}
+
+/* Futuristic Splash Screen Styles */
+.futuristic-splash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.splash-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #16213e 100%);
+}
+
+.glass-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neon-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: grid-move 20s linear infinite;
+}
+
+@keyframes grid-move {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+.splash-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  font-family: 'Orbitron', 'Courier New', monospace;
+}
+
+.splash-title {
+  font-size: 4rem;
+  font-weight: 900;
+  margin: 0 0 2rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  animation: glitch 2s infinite;
+}
+
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+.splash-timer {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #00ffff;
+  margin: 2rem 0;
+  text-shadow: 0 0 20px currentColor;
+}
+
+.progress-container {
+  position: relative;
+  width: 400px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  margin: 2rem auto;
+  overflow: hidden;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff0040, #ff4444, #00ffff);
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(255, 0, 64, 0.5);
+  position: relative;
+}
+
+.progress-glow {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(90deg, #ff0040, #ff4444, #00ffff);
+  border-radius: 6px;
+  filter: blur(4px);
+  z-index: -1;
+}
+
+.orbit-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  height: 300px;
+}
+
+.orbit-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #00ffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+  top: 50%;
+  left: 50%;
+  transform-origin: var(--orbit-radius) 0;
+  transform: translate(-50%, -50%) rotate(var(--orbit-delay, 0deg));
+}
+
+.floating-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.floating-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #00ffff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.glitch-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.glitch-line {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #ff0040, transparent);
+  animation: glitch-line 0.5s infinite;
+}
+
+@keyframes glitch-line {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* Study status indicator */
+.study-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-studying {
+  color: #00ff88;
+}
+
+.status-studying .status-indicator {
+  background: #00ff88;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.status-away {
+  color: #ff4444;
+}
+
+.status-away .status-indicator {
+  background: #ff4444;
+  box-shadow: 0 0 10px currentColor;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

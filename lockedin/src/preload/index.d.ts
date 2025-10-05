@@ -7,7 +7,7 @@ declare global {
       setSessionIntention: (intention: string) => void
       getSessionIntention: () => Promise<string | null>
       startSession: (width: number, height: number) => void
-      hideSession: () => void
+      minimizeWindow: () => void
       showSession: (width: number, height: number) => void
       exitApp: () => void
     }

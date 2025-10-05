@@ -13,22 +13,21 @@ const llmService = require("./src/services/llm.service");
 let mainWindow: BrowserWindow | null = null
 
 const initialWidth = 400
-const initialHeight = 200
-const overlaySize = 60 // For the "minimized" button
+const initialHeight = 260
 
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: initialWidth,
     height: initialHeight,
-    minWidth: overlaySize,
-    minHeight: overlaySize,
+    minWidth: initialWidth,
+    minHeight: initialHeight,
     show: false,
     autoHideMenuBar: true,
-    frame: false, // Frameless window for overlay look
-    transparent: true, // Transparent background
-    alwaysOnTop: true, // Always on top
-    hasShadow: false, // No shadow for a cleaner overlay look
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    hasShadow: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -78,20 +77,15 @@ ipcMain.on('start-session', (event, width: number, height: number) => {
   }
 })
 
-ipcMain.on('hide-session', () => {
+ipcMain.on('minimize-window', () => {
   if (mainWindow) {
-    // Change to small overlay button size
-    mainWindow.setSize(overlaySize, overlaySize)
-    const display = require('electron').screen.getPrimaryDisplay()
-    const x = display.bounds.width - overlaySize - 20 // 20px padding from right
-    const y = display.bounds.height - overlaySize - 20 // 20px padding from bottom
-    mainWindow.setPosition(x, y, true)
+    mainWindow.minimize()
   }
 })
 
 ipcMain.on('show-session', (event, width: number, height: number) => {
   if (mainWindow) {
-    // Restore size to "Session in progress" view
+    mainWindow.setMinimumSize(initialWidth, initialHeight)
     mainWindow.setSize(width, height)
     mainWindow.center()
   }
