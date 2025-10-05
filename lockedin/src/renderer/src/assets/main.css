@@ -18,12 +18,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  -webkit-app-region: no-drag; /* Disable drag inside content */
   padding: 20px;
   background-color: var(--ev-c-black-soft); /* Solid background for content */
-  border: 1px solid var(--ev-c-gray-1);
   border-radius: 10px;
-  /* Add minimum size for initial input view */
   min-width: 360px;
   min-height: 160px;
 }
@@ -35,6 +32,7 @@ body {
   align-items: center;
   text-align: center;
   width: 100%;
+  -webkit-app-region: no-drag;
 }
 
 .intention-input {
@@ -65,6 +63,10 @@ body {
 
 .intention-input::placeholder {
   color: var(--ev-c-text-3);
+}
+
+button {
+  -webkit-app-region: no-drag;
 }
 
 .start-button {
@@ -101,10 +103,6 @@ body {
   width: 100%;
 }
 
-.hide-button {
-  /* Default alt button style */
-}
-
 .exit-button {
   background-color: #ff5555;
   color: var(--ev-c-white);
@@ -115,69 +113,6 @@ body {
   background-color: #cc4444;
   border-color: #cc4444;
 }
-
-/* Styles for Hidden Overlay View (Small Button) */
-#root-content.app-state-hidden {
-  background-color: rgba(0, 0, 0, 0.7); /* Translucent black background */
-  border: 1px solid #6988e6; /* Added a border for definition */
-  padding: 0;
-  height: 60px;
-  box-shadow: none;
-}
-
-.hidden-overlay {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-around;
-  position: relative;
-  background-color: transparent;
-  width: 100%;
-  height: 100%;
-}
-
-.show-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #6988e6;
-  color: var(--ev-c-white);
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-  line-height: 40px;
-  font-size: 20px;
-  padding: 0;
-}
-
-.show-button:hover {
-  background-color: #4b66b8;
-}
-
-.exit-hidden-button {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #ff5555;
-  color: white;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-  line-height: 1; 
-  font-size: 16px;
-  padding: 0;
-}
-
-.exit-hidden-button:hover {
-  background-color: #cc4444;
-}
-
-/* Original styles adjusted or hidden */
 
 .logo {
   margin-bottom: 20px;
