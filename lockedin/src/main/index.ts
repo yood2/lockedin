@@ -3,7 +3,6 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import captureService from '../services/capture.service'
-import { promises as fs } from 'fs'
 
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
@@ -80,8 +79,6 @@ async function performScreenCapture(): Promise<void> {
     console.error('Failed to capture screen:', error)
   }
 }
-// Global variable to store session intention
-let sessionIntention: string | null = null
 
 // IPC Handlers
 ipcMain.on('set-intention', (_event, intention: string) => {
