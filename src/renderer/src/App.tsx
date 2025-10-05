@@ -162,74 +162,78 @@ const SessionInProgress = ({
 
   return (
     <>
+      {/* 
+        FIX: The webcam video must remain mounted throughout the session to prevent the 
+        webcam stream from being lost when the splash screen or overlay is visible. 
+        It is now unconditionally rendered but hidden with CSS 'display: none' when needed.
+      */}
+      <video
+        ref={videoRef}
+        style={{
+          position: 'fixed',
+          top: '10px',
+          left: '10px',
+          width: '120px',
+          height: '90px',
+          borderRadius: '4px',
+          objectFit: 'cover',
+          opacity: 0.5,
+          display: isOverlayVisible || showSplash ? 'none' : 'block' // Hide with CSS, not unmount
+        }}
+        width="640"
+        height="480"
+        autoPlay
+        muted
+        playsInline
+      />
+      
       {/* Main Session View - Hidden when overlay is active OR splash is showing */}
       {!isOverlayVisible && !showSplash && (
-        <>
-          <video
-            ref={videoRef}
+        <div className="session-progress">
+          <div className={`study-status ${isFocused ? 'status-studying' : 'status-away'}`}>
+            <div className="status-indicator" />
+            {isFocused ? 'STUDYING' : 'OFF-TASK DETECTED'}
+          </div>
+
+          {!isFocused && userActivity && (
+            <div style={{ fontSize: '12px', color: '#ee8686', marginTop: '4px' }}>
+              {userActivity}
+            </div>
+          )}
+
+          <div className="text">Session in progress...</div>
+          <div className="intention-display">"{intention}"</div>
+          <div
+            className="timer-display"
             style={{
-              position: 'fixed',
-              top: '10px',
-              left: '10px',
-              width: '120px',
-              height: '90px',
-              borderRadius: '4px',
-              objectFit: 'cover',
-              opacity: 0.5
+              fontSize: '32px',
+              fontWeight: 'bold',
+              margin: '15px 0',
+              color: '#6988e6'
             }}
-            width="640"
-            height="480"
-            autoPlay
-            muted
-            playsInline
-          />
+          >
+            {formatTime(timeLeft)}
+          </div>
 
-          <div className="session-progress">
-            <div className={`study-status ${isFocused ? 'status-studying' : 'status-away'}`}>
-              <div className="status-indicator" />
-              {isFocused ? 'STUDYING' : 'OFF-TASK DETECTED'}
+          {isChecking && (
+            <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+              Checking focus...
             </div>
+          )}
 
-            {!isFocused && userActivity && (
-              <div style={{ fontSize: '12px', color: '#ee8686', marginTop: '4px' }}>
-                {userActivity}
-              </div>
-            )}
-
-            <div className="text">Session in progress...</div>
-            <div className="intention-display">"{intention}"</div>
-            <div
-              className="timer-display"
-              style={{
-                fontSize: '32px',
-                fontWeight: 'bold',
-                margin: '15px 0',
-                color: '#6988e6'
-              }}
-            >
-              {formatTime(timeLeft)}
+          <div className="actions" style={{ marginTop: '20px' }}>
+            <div className="action">
+              <button onClick={handleHide} className="hide-button">
+                Hide
+              </button>
             </div>
-
-            {isChecking && (
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-                Checking focus...
-              </div>
-            )}
-
-            <div className="actions" style={{ marginTop: '20px' }}>
-              <div className="action">
-                <button onClick={handleHide} className="hide-button">
-                  Hide
-                </button>
-              </div>
-              <div className="action">
-                <button onClick={handleExit} className="exit-button">
-                  Exit
-                </button>
-              </div>
+            <div className="action">
+              <button onClick={handleExit} className="exit-button">
+                Exit
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Futuristic Overlay - Hidden when splash is showing */}
