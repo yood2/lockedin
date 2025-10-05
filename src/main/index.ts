@@ -413,6 +413,8 @@ ipcMain.on('end-session', () => {
 })
 
 ipcMain.handle('get-session-summary', () => {
+
+  if (captureInterval) clearInterval(captureInterval)
   const now = Date.now()
   const end = sessionEndAt || now
   const start = sessionStartAt || end
