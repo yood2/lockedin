@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import captureService from '../services/capture.service'
+import { promises as fs } from 'fs'
 
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
@@ -50,11 +52,39 @@ function createWindow(): void {
   }
 }
 
+// Global variables for session and capture management
+let sessionIntention: string | null = null
+let captureInterval: NodeJS.Timeout | null = null
+
+/**
+ * Captures a screenshot of the desktop and stores the image in a buffer.
+ * This function is called by the interval.
+ */
+async function performScreenCapture(): Promise<void> {
+  // Only capture the screen if a session is active (intention is set)
+  if (!sessionIntention) {
+    console.log('No session intention set, skipping screenshot.')
+    return
+  }
+
+  try {
+    console.log('Capturing screen...')
+    const result = await captureService.captureAndProcess()
+    console.log(`Screenshot captured successfully. Path: ${result.localPath}`)
+    // The image buffer is available in result.imageBuffer if needed for next steps.
+    
+    // Clean up old screenshots, keeping only the most recent 10
+    captureService.cleanupOldScreenshots(10)
+    console.log('Cleaned up old screenshots, keeping the last 10.')
+  } catch (error) {
+    console.error('Failed to capture screen:', error)
+  }
+}
 // Global variable to store session intention
 let sessionIntention: string | null = null
 
 // IPC Handlers
-ipcMain.on('set-intention', (event, intention: string) => {
+ipcMain.on('set-intention', (_event, intention: string) => {
   sessionIntention = intention
   console.log('Session Intention Set:', sessionIntention)
 })
@@ -63,11 +93,16 @@ ipcMain.handle('get-intention', () => {
   return sessionIntention
 })
 
-ipcMain.on('start-session', (event, width: number, height: number) => {
+ipcMain.on('start-session', (_event, width: number, height: number) => {
   if (mainWindow) {
     // Resize for "Session in progress" view
     mainWindow.setSize(width, height)
     mainWindow.center()
+
+    // Start the 5-second screenshot interval
+    if (captureInterval) clearInterval(captureInterval) // Clear any old interval
+    captureInterval = setInterval(performScreenCapture, 5000)
+    console.log('Session started. Capturing screen every 5 seconds.')
   }
 })
 
@@ -77,7 +112,7 @@ ipcMain.on('minimize-window', () => {
   }
 })
 
-ipcMain.on('show-session', (event, width: number, height: number) => {
+ipcMain.on('show-session', (_event, width: number, height: number) => {
   if (mainWindow) {
     mainWindow.setMinimumSize(initialWidth, initialHeight)
     mainWindow.setSize(width, height)
@@ -86,44 +121,33 @@ ipcMain.on('show-session', (event, width: number, height: number) => {
 })
 
 ipcMain.on('exit-app', () => {
+  // Stop the interval when exiting
+  if (captureInterval) clearInterval(captureInterval)
   app.quit()
 })
 
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
   createWindow()
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+// Quit when all windows are closed, except on macOS.
 app.on('window-all-closed', () => {
+  // Stop the interval when all windows are closed
+  if (captureInterval) clearInterval(captureInterval)
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.
