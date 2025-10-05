@@ -1,16 +1,15 @@
 @import './base.css';
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
 body {
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  /* background-image: url('./wavy-lines.svg'); */
   background-size: cover;
   user-select: none;
   -webkit-app-region: drag; /* Enable drag for frameless window */
   padding: 0; /* Add padding for content */
+  background-color: transparent !important; /* Ensure body is transparent for frameless window */
 }
 
 /* New container for content to restore click/input regions and manage background */
@@ -20,8 +19,9 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background-color: var(--ev-c-black-soft); /* Solid background for content */
-  border-radius: 10px;
+  background-color: rgba(34, 34, 34, 0.7); /* Semi-transparent black-soft */
+  border-radius: 8px; /* Slightly reduced border radius */
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Minimal border */
   min-width: 360px;
   min-height: 160px;
 }
@@ -45,8 +45,8 @@ body {
 }
 
 .intention-input {
-  background-color: var(--ev-c-gray-3);
-  border: 1px solid var(--ev-c-gray-1);
+  background-color: rgba(65, 72, 83, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--ev-c-text-1);
   border-radius: 5px;
   padding: 8px 12px;
@@ -67,7 +67,7 @@ body {
 .duration-input {
   max-width: 80px;
   text-align: center;
-  margin: 5px 0 0 0; /* Adjust margin for proper spacing */
+  margin: 5px 0 0 0;
 }
 
 .intention-input::placeholder {
@@ -76,17 +76,25 @@ body {
 
 button {
   -webkit-app-region: no-drag;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 5px;
 }
 
 .start-button {
-  background-color: #6988e6;
+  background-color: rgba(105, 136, 230, 0.7);
   color: var(--ev-c-white);
-  border-color: #6988e6;
+  border-color: rgba(105, 136, 230, 0.5);
 }
 
 .start-button:hover {
-  background-color: #4b66b8;
-  border-color: #4b66b8;
+  background-color: rgba(75, 102, 184, 0.8);
+  border-color: rgba(75, 102, 184, 0.6);
 }
 
 /* Styles for Session In Progress View */
@@ -113,14 +121,14 @@ button {
 }
 
 .exit-button {
-  background-color: #ff5555;
+  background-color: rgba(255, 85, 85, 0.7);
   color: var(--ev-c-white);
-  border-color: #ff5555;
+  border-color: rgba(255, 85, 85, 0.5);
 }
 
 .exit-button:hover {
-  background-color: #cc4444;
-  border-color: #cc4444;
+  background-color: rgba(204, 68, 68, 0.8);
+  border-color: rgba(204, 68, 68, 0.6);
 }
 
 .logo {
@@ -192,8 +200,8 @@ button {
   width: 100%;
   height: 100%;
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(5px); /* Reduced blur */
+  -webkit-backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -219,7 +227,7 @@ button {
   position: relative;
   z-index: 10;
   text-align: center;
-  font-family: 'Orbitron', 'Courier New', monospace;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 .splash-title {
@@ -228,15 +236,6 @@ button {
   margin: 0 0 2rem 0;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  animation: glitch 2s infinite;
-}
-
-@keyframes glitch {
-  0%, 100% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(-2px, -2px); }
-  60% { transform: translate(2px, 2px); }
-  80% { transform: translate(2px, -2px); }
 }
 
 .splash-timer {
@@ -340,23 +339,22 @@ button {
   50% { opacity: 1; }
 }
 
-/* Study status indicator */
 .study-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  font-family: 'Orbitron', 'Courier New', monospace;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
 }
 
 .status-indicator {

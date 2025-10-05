@@ -102,9 +102,12 @@ function updateOverlayVisibility(isVisible: boolean): void {
     if (!overlayWindow) return
 
     if (isVisible) {
-        overlayWindow.showInactive()
+        if (overlayWindow.isMinimized()) {
+            overlayWindow.showInactive()
+        }
         overlayWindow.setIgnoreMouseEvents(false)
     } else {
+        overlayWindow.hide()
         overlayWindow.setIgnoreMouseEvents(true)
     }
 }
