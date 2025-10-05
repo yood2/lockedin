@@ -291,7 +291,6 @@ const SessionFinished = ({ onRestart, onExit }: { onRestart: () => void, onExit:
 enum AppState {
   Input = 'input',
   Session = 'session',
-  Hidden = 'hidden',
   Finished = 'finished',
 }
 
@@ -316,14 +315,8 @@ function App(): React.JSX.Element {
     setAppState(AppState.Finished)
   }
 
-  const handleHide = () => {
-    window.api.hideSession(sessionViewWidth)
-    setAppState(AppState.Hidden)
-  }
-
-  const handleShow = () => {
-    window.api.showSession(sessionViewWidth, sessionViewHeight)
-    setAppState(AppState.Session)
+  const handleMinimize = () => {
+    window.api.minimizeWindow()
   }
 
   const handleRestart = () => {
@@ -341,10 +334,7 @@ function App(): React.JSX.Element {
       content = <IntentionInput onStartSession={handleStartSession} />
       break
     case AppState.Session:
-      content = <SessionInProgress onHide={handleHide} onExit={handleExit} onFinish={handleFinish} durationMinutes={duration} />
-      break
-    case AppState.Hidden:
-      content = <HiddenOverlay onShow={handleShow} onExit={handleExit} />
+      content = <SessionInProgress onHide={handleMinimize} onExit={handleExit} onFinish={handleFinish} durationMinutes={duration} />
       break
     case AppState.Finished:
       content = <SessionFinished onRestart={handleRestart} onExit={handleExit} />
