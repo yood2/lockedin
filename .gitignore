@@ -7,4 +7,5 @@
 *.vscode*
 *build*
 *screenshots*
+*/webcam/
 *.env*
