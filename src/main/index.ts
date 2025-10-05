@@ -420,6 +420,51 @@ ipcMain.on('end-session', () => {
   } else {
     finalizedTotalUnfocusedMs = totalUnfocusedMs
   }
+
+  // Persist a human-readable session summary and JSONL record
+  try {
+    const start = sessionStartAt || now
+    const totalDurationMs = Math.max(0, (sessionEndAt || now) - start)
+    const effectiveUnfocusedMs = finalizedTotalUnfocusedMs ?? 0
+    const topActivity = getTopEntry(activityCounts)
+    const topAppAct = getTopEntry(appActivityCounts)
+
+    const summaryObj = {
+      sessionStart: new Date(start).toISOString(),
+      sessionEnd: new Date(sessionEndAt || now).toISOString(),
+      totalDurationSec: Math.round(totalDurationMs / 1000),
+      totalUnfocusedSec: Math.round(effectiveUnfocusedMs / 1000),
+      focusRatio: totalDurationMs > 0 ? Number(((totalDurationMs - effectiveUnfocusedMs) / totalDurationMs).toFixed(3)) : 1,
+      longestUnfocusedStreakSec: Math.round(longestUnfocusedStreakMs / 1000),
+      mostCommonDistraction: topActivity ? { activity: topActivity.key, occurrences: topActivity.count } : null,
+      mostUsedAppActivity: topAppAct
+        ? (() => {
+            const [appName, activity = ''] = topAppAct.key.split(' — ')
+            return { app: appName, activity, occurrences: topAppAct.count }
+          })()
+        : null
+    }
+
+    const projectRoot = path.resolve(__dirname, '../../../')
+    const sessionLogsDir = join(projectRoot, 'session-logs')
+    if (!fs.existsSync(sessionLogsDir)) fs.mkdirSync(sessionLogsDir, { recursive: true })
+
+    const sessionTextPath = join(sessionLogsDir, `session-summary_${new Date(now).toISOString().replace(/[:.]/g, '-')}.txt`)
+    const text = `Session Summary\n` +
+      `Start: ${summaryObj.sessionStart}\n` +
+      `End: ${summaryObj.sessionEnd}\n` +
+      `Total Duration: ${summaryObj.totalDurationSec}s\n` +
+      `Unfocused: ${summaryObj.totalUnfocusedSec}s\n` +
+      `Focus Ratio: ${Math.round((summaryObj.focusRatio || 0) * 100)}%\n` +
+      `Longest Unfocused Streak: ${summaryObj.longestUnfocusedStreakSec}s\n` +
+      `Most Common Distraction: ${summaryObj.mostCommonDistraction ? summaryObj.mostCommonDistraction.activity + ' (' + summaryObj.mostCommonDistraction.occurrences + ')' : 'N/A'}\n` +
+      `Most Used App/Activity: ${summaryObj.mostUsedAppActivity ? (summaryObj.mostUsedAppActivity.app + ' — ' + summaryObj.mostUsedAppActivity.activity + ' (' + summaryObj.mostUsedAppActivity.occurrences + ')') : 'N/A'}\n`
+    fs.writeFileSync(sessionTextPath, text, 'utf-8')
+
+    appendJsonl('sessions.jsonl', { ts: new Date(now).toISOString(), ...summaryObj })
+  } catch (e) {
+    console.warn('Failed to persist session summary:', e)
+  }
 })
 
 ipcMain.handle('get-session-summary', () => {
