@@ -49,6 +49,20 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.duration-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.duration-input {
+  max-width: 80px;
+  text-align: center;
+  margin: 5px 0 0 0; /* Adjust margin for proper spacing */
+}
+
 .intention-input::placeholder {
   color: var(--ev-c-text-3);
 }
@@ -77,6 +91,14 @@ body {
   font-size: 16px;
   color: var(--ev-c-text-2);
   margin-top: 5px;
+}
+
+.session-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
 }
 
 .hide-button {
