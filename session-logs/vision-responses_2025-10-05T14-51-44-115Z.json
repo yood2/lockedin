@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-10-05T14:51:44.115Z",
+  "focused": false,
+  "userActivity": "look away",
+  "currentApp": "ai assistant",
+  "currentActivity": "image classification",
+  "rawResponse": "{\"focused\":false,\"user_activity\":\"look away\",\"current_app\":\"ai assistant\",\"current_activity\":\"image classification\"}"
+}
