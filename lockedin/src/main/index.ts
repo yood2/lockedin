@@ -1,8 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, desktopCapturer, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import captureService from '../services/capture.service'
+import { promises as fs } from 'fs'
 
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
@@ -100,6 +101,24 @@ ipcMain.on('start-session', (_event, width: number, height: number) => {
     if (captureInterval) clearInterval(captureInterval) // Clear any old interval
     captureInterval = setInterval(performScreenCapture, 5000)
     console.log('Session started. Capturing screen every 5 seconds.')
+  }
+})
+
+ipcMain.on('start-screenshot-timer', () => {
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval)
+  }
+  // Take screenshot immediately and then every 10 seconds (10000ms)
+  takeScreenshot()
+  screenshotInterval = setInterval(takeScreenshot, 10000)
+  console.log('Screenshot timer started. Interval: 10 seconds.')
+})
+
+ipcMain.on('stop-screenshot-timer', () => {
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval)
+    screenshotInterval = null
+    console.log('Screenshot timer stopped.')
   }
 })
 
