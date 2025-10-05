@@ -1,184 +1,145 @@
-import React, { useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect } from 'react'
 
 interface FuturisticSplashProps {
   isVisible: boolean
-  timeAway: number
-  onPlaySound: () => void
+  onReturnToSession: () => void
 }
 
-export const FuturisticSplash: React.FC<FuturisticSplashProps> = ({
+export const FuturisticSplash = ({
   isVisible,
-  timeAway,
-  onPlaySound
-}) => {
-  const hasPlayedSound = useRef(false)
+  onReturnToSession
+}: FuturisticSplashProps): React.JSX.Element => {
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  const handleLockIn = () => {
+    setIsAnimating(true)
+  }
 
   useEffect(() => {
-    if (isVisible && !hasPlayedSound.current) {
-      onPlaySound()
-      hasPlayedSound.current = true
-    } else if (!isVisible) {
-      hasPlayedSound.current = false
+    if (isAnimating) {
+      const timer = setTimeout(() => {
+        setIsAnimating(false)
+        onReturnToSession()
+      }, 2000) // Animation duration
+      return () => clearTimeout(timer)
     }
-  }, [isVisible, onPlaySound])
+  }, [isAnimating, onReturnToSession])
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const getTitle = () => {
-    if (timeAway >= 600) return 'LOCK TF IN'
-    return 'GO BACK TO STUDYING'
-  }
-
-  const getTitleColor = () => {
-    if (timeAway >= 600) return '#ff0040'
-    return '#ff4444'
+  if (!isVisible) {
+    return null
   }
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          className="futuristic-splash"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Background with glassmorphism effect */}
-          <div className="splash-background">
-            <div className="glass-overlay" />
-            <div className="neon-grid" />
+    <div className={`splash-overlay ${isAnimating ? 'animating' : ''}`}>
+      <div className="splash-content">
+        <div className="scanline"></div>
+        <div className="fairy-container">
+          <img src="./resources/fairy.gif" alt="Fairy" />
+        </div>
+        <div className="title">
+          {isAnimating ? 'RE-ENGAGING FOCUS...' : 'Are you still studying?'}
+        </div>
+
+        {!isAnimating && (
+          <>
+            <div className="message">
+              It seems you're not focused. Take a short break, or get back to it!
+            </div>
+            <button className="lock-in-button" onClick={handleLockIn}>
+              I AM LOCKED IN
+            </button>
+          </>
+        )}
+
+        {isAnimating && (
+          <div className="animation-text">
+            <span>Synchronizing neural pathways...</span>
+            <span>Enhancing cognitive flow...</span>
+            <span>Focus matrix re-aligned!</span>
           </div>
+        )}
+      </div>
 
-          {/* Main content */}
-          <motion.div
-            className="splash-content"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            {/* Title with glitch effect */}
-            <motion.h1
-              className="splash-title"
-              style={{ color: getTitleColor() }}
-              animate={{
-                textShadow: [
-                  '0 0 20px currentColor',
-                  '0 0 40px currentColor',
-                  '0 0 60px currentColor',
-                  '0 0 40px currentColor',
-                  '0 0 20px currentColor'
-                ]
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              {getTitle()}
-            </motion.h1>
+      <style>{`
+        .splash-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.95);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 999;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.5s, visibility 0.5s;
+          color: #0f0;
+          font-family: 'Courier New', Courier, monospace;
+        }
 
-            {/* Timer with pulsing effect */}
-            <motion.div
-              className="splash-timer"
-              animate={{
-                scale: [1, 1.05, 1],
-                textShadow: [
-                  '0 0 20px currentColor',
-                  '0 0 30px currentColor',
-                  '0 0 20px currentColor'
-                ]
-              }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              {formatTime(timeAway)}
-            </motion.div>
+        .splash-overlay.visible, .splash-overlay.animating {
+          opacity: 1;
+          visibility: visible;
+        }
 
-            {/* Progress bar */}
-            <motion.div className="progress-container">
-              <motion.div
-                className="progress-bar"
-                initial={{ width: '0%' }}
-                animate={{ 
-                  width: timeAway >= 600 ? '100%' : `${(timeAway / 600) * 100}%`
-                }}
-                transition={{ duration: 0.5 }}
-              />
-              <motion.div
-                className="progress-glow"
-                animate={{
-                  opacity: [0.5, 1, 0.5]
-                }}
-                transition={{ duration: 1, repeat: Infinity }}
-              />
-            </motion.div>
+        .splash-content {
+          text-align: center;
+          position: relative;
+        }
+        
+        // ... (rest of the CSS from your original file)
+        
+        .lock-in-button {
+          background-color: #0f0;
+          color: #000;
+          border: 2px solid #0f0;
+          padding: 12px 24px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          margin-top: 30px;
+          transition: all 0.3s;
+          box-shadow: 0 0 15px #0f0;
+        }
 
-            {/* Orbiting particles */}
-            <div className="orbit-container">
-              {[...Array(8)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="orbit-particle"
-                  animate={{
-                    rotate: 360,
-                    scale: [0.5, 1, 0.5]
-                  }}
-                  transition={{
-                    rotate: { duration: 4 + i, repeat: Infinity, ease: "linear" },
-                    scale: { duration: 2, repeat: Infinity }
-                  }}
-                  style={{
-                    '--orbit-delay': `${i * 0.5}s`,
-                    '--orbit-radius': `${100 + i * 20}px`
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
+        .lock-in-button:hover {
+          background-color: #000;
+          color: #0f0;
+        }
 
-            {/* Floating particles */}
-            <div className="floating-particles">
-              {[...Array(20)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="floating-particle"
-                  animate={{
-                    x: [0, Math.random() * 200 - 100],
-                    y: [0, Math.random() * 200 - 100],
-                    opacity: [0, 1, 0],
-                    scale: [0, 1, 0]
-                  }}
-                  transition={{
-                    duration: 3 + Math.random() * 2,
-                    repeat: Infinity,
-                    delay: Math.random() * 3
-                  }}
-                />
-              ))}
-            </div>
+        .splash-overlay.animating .lock-in-button,
+        .splash-overlay.animating .message,
+        .splash-overlay.animating .fairy-container {
+          display: none;
+        }
 
-            {/* Glitch lines */}
-            <div className="glitch-lines">
-              {[...Array(5)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="glitch-line"
-                  animate={{
-                    opacity: [0, 1, 0],
-                    x: [0, Math.random() * 100 - 50]
-                  }}
-                  transition={{
-                    duration: 0.5,
-                    repeat: Infinity,
-                    delay: Math.random() * 2
-                  }}
-                />
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        .animation-text {
+          display: flex;
+          flex-direction: column;
+          margin-top: 20px;
+          overflow: hidden;
+          height: 80px; /* Adjust height based on font size and line height */
+        }
+
+        .animation-text span {
+          display: block;
+          opacity: 0;
+          animation: slide-in 2s forwards;
+          font-size: 14px;
+        }
+
+        .animation-text span:nth-child(1) { animation-delay: 0s; }
+        .animation-text span:nth-child(2) { animation-delay: 0.7s; }
+        .animation-text span:nth-child(3) { animation-delay: 1.4s; }
+
+        @keyframes slide-in {
+          0% { transform: translateY(100%); opacity: 0; }
+          20%, 80% { transform: translateY(0); opacity: 1; }
+          100% { transform: translateY(-100%); opacity: 0; }
+        }
+      `}</style>
+    </div>
   )
 }

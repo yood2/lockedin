@@ -25,6 +25,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@google/generative-ai": "^0.24.1",
     "dotenv": "^17.2.3",
+    "electron-store": "^9.0.0",
     "framer-motion": "^12.23.22"
   },
   "devDependencies": {

@@ -1,12 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useSimpleEyeTracking } from './hooks/useSimpleEyeTracking'
+import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
+<<<<<<< HEAD
+=======
 import { AnimatePresence, motion } from 'framer-motion'
 import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
+>>>>>>> origin/main
 
 // --- Components for different views ---
 
-const IntentionInput = ({ onStartSession }: { onStartSession: (intention: string, duration: number) => void }): React.JSX.Element => {
+const IntentionInput = ({
+  onStartSession
+}: {
+  onStartSession: (intention: string, duration: number) => void
+}): React.JSX.Element => {
   const [intention, setIntention] = useState('')
   const [duration, setDuration] = useState(25)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -45,7 +52,10 @@ const IntentionInput = ({ onStartSession }: { onStartSession: (intention: string
         className="intention-input"
       />
       <div className="duration-input-container">
-        <label htmlFor="duration-input" style={{ fontSize: '14px', color: 'var(--ev-c-text-2)', marginBottom: '5px' }}>
+        <label
+          htmlFor="duration-input"
+          style={{ fontSize: '14px', color: 'var(--ev-c-text-2)', marginBottom: '5px' }}
+        >
           Duration (mins, max 60)
         </label>
         <input
@@ -70,72 +80,58 @@ const IntentionInput = ({ onStartSession }: { onStartSession: (intention: string
   )
 }
 
-const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHide: () => void, onExit: () => void, onFinish: () => void, durationMinutes: number }): React.JSX.Element => {
+const SessionInProgress = ({
+  onHide,
+  onExit,
+  onFinish,
+  durationMinutes
+}: {
+  onHide: () => void
+  onExit: () => void
+  onFinish: () => void
+  durationMinutes: number
+}): React.JSX.Element => {
   const [intention, setIntention] = useState('Loading intention...')
-  const [timeLeft, setTimeLeft] = useState(durationMinutes * 60) // Time left in seconds
-  const [timeAway, setTimeAway] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(durationMinutes * 60)
   const [showSplash, setShowSplash] = useState(false)
   const intervalRef = useRef<number | undefined>(undefined)
-  
-  // Eye tracking
-  const { state: eyeState, videoRef, initialize, cleanup, toggleLookingState } = useSimpleEyeTracking()
+
+  // Vision-based focus tracking
+  const { isFocused, isChecking, videoRef } = useLockdown()
 
   const memoizedOnFinish = useCallback(() => {
     onFinish()
   }, [onFinish])
 
-  // Initialize eye tracking
   useEffect(() => {
-    const initEyeTracking = async () => {
-      await initialize()
-    }
-    initEyeTracking()
-    return cleanup
-  }, [initialize, cleanup])
-
-  useEffect(() => {
-    window.api.getSessionIntention().then(i => setIntention(i || 'No intention set'))
+    window.api.getSessionIntention().then((i) => setIntention(i || 'No intention set'))
 
     intervalRef.current = setInterval(() => {
-      setTimeLeft(t => {
-        // Only count down if user is looking at screen
-        if (eyeState.isLookingAtScreen && t > 1) {
+      setTimeLeft((t) => {
+        if (isFocused && t > 1) {
           return t - 1
         } else if (t <= 1) {
           clearInterval(intervalRef.current)
           memoizedOnFinish()
           return 0
         }
-        return t // Don't count down if not looking at screen
+        return t
       })
     }, 1000) as unknown as number
 
     return () => clearInterval(intervalRef.current)
-  }, [memoizedOnFinish, eyeState.isLookingAtScreen])
+  }, [memoizedOnFinish, isFocused])
 
-  // Track time away from screen
+  // Show splash screen when not focused
   useEffect(() => {
-    if (!eyeState.isLookingAtScreen) {
-      const interval = setInterval(() => {
-        const timeSinceLastLook = Date.now() - eyeState.lastLookTime
-        const secondsAway = Math.floor(timeSinceLastLook / 1000)
-        setTimeAway(secondsAway)
-        
-        // Show splash after 10 seconds
-        if (timeSinceLastLook > 10000) {
-          setShowSplash(true)
-          console.log('Splash screen triggered after', secondsAway, 'seconds away')
-        }
-      }, 100)
-      
-      return () => clearInterval(interval)
-    } else {
-      setTimeAway(0)
-      setShowSplash(false)
-      console.log('User is back - hiding splash screen')
-      return () => {} // Return empty cleanup function
+    if (!isFocused) {
+      setShowSplash(true)
     }
-  }, [eyeState.isLookingAtScreen, eyeState.lastLookTime])
+  }, [isFocused])
+
+  const handleReturnToSession = () => {
+    setShowSplash(false)
+  }
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60)
@@ -143,105 +139,53 @@ const SessionInProgress = ({ onHide, onExit, onFinish, durationMinutes }: { onHi
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
   }
 
-  const playSound = () => {
-    // Create a simple beep sound
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-    
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime)
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-    
-    oscillator.start(audioContext.currentTime)
-    oscillator.stop(audioContext.currentTime + 0.5)
-  }
-
-return (
+  return (
     <>
-      {/* Hidden video element for fallback detection */}
       <video
         ref={videoRef}
-        style={{ display: 'none' }}
+        style={{
+          position: 'fixed',
+          top: '10px',
+          left: '10px',
+          width: '120px',
+          height: '90px',
+          borderRadius: '4px',
+          objectFit: 'cover',
+          opacity: 0.5
+        }}
         width="640"
         height="480"
         autoPlay
         muted
         playsInline
       />
-      
+
       <div className="session-progress">
-        {/* Study Status Indicator - Corrected to ensure proper closing tag */}
-        <div 
-          className={`study-status ${eyeState.isLookingAtScreen ? 'status-studying' : 'status-away'}`}
-          onClick={toggleLookingState}
-          style={{ cursor: 'pointer' }}
-          title="Click to toggle eye tracking state for testing"
-        >
+        <div className={`study-status ${isFocused ? 'status-studying' : 'status-away'}`}>
           <div className="status-indicator" />
-          {eyeState.isLookingAtScreen ? 'STUDYING' : 'LOOK AWAY DETECTED'}
-        </div> 
-        
+          {isFocused ? 'STUDYING' : 'OFF-TASK DETECTED'}
+        </div>
+
         <div className="text">Session in progress...</div>
         <div className="intention-display">"{intention}"</div>
-        <div className="timer-display" style={{ fontSize: '32px', fontWeight: 'bold', margin: '15px 0', color: '#6988e6' }}>
+        <div
+          className="timer-display"
+          style={{
+            fontSize: '32px',
+            fontWeight: 'bold',
+            margin: '15px 0',
+            color: '#6988e6'
+          }}
+        >
           {formatTime(timeLeft)}
         </div>
 
-        {/* Session Duration from Eye Tracking */}
-        {eyeState.isInitialized && (
-          <div style={{ fontSize: '14px', color: '#888', marginTop: '10px' }}>
-            Focused Time: {formatTime(eyeState.sessionDuration)}
+        {isChecking && (
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+            Checking focus...
           </div>
         )}
-        
-        {/* Debug Info and Buttons */}
-        {eyeState.isInitialized && (
-          <div style={{ fontSize: '12px', color: '#666', marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'center' }}>
-            <div>
-              WebGazer: {eyeState.isLookingAtScreen ? 'Looking at screen' : 'Looking away'} | 
-              Away for: {timeAway}s
-              {eyeState.gazeX !== undefined && eyeState.gazeY !== undefined && (
-                <span> | Gaze: ({eyeState.gazeX.toFixed(0)}, {eyeState.gazeY.toFixed(0)})</span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '5px' }}>
-              <button 
-                onClick={() => setShowSplash(!showSplash)}
-                style={{ 
-                  padding: '2px 6px', 
-                  fontSize: '10px',
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                  borderRadius: '3px',
-                  cursor: 'pointer'
-                }}
-              >
-                Test Splash
-              </button>
-              <button 
-                onClick={toggleLookingState}
-                style={{ 
-                  padding: '2px 6px', 
-                  fontSize: '10px',
-                  background: '#444',
-                  color: '#fff',
-                  border: '1px solid #666',
-                  borderRadius: '3px',
-                  cursor: 'pointer'
-                }}
-              >
-                Toggle Eye State
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Unified Actions block */}
+
         <div className="actions" style={{ marginTop: '20px' }}>
           <div className="action">
             <button onClick={onHide} className="hide-button">
@@ -255,37 +199,31 @@ return (
           </div>
         </div>
       </div>
-      
-      {/* Futuristic Splash Screen */}
-      <FuturisticSplash 
-        isVisible={showSplash} 
-        timeAway={timeAway} 
-        onPlaySound={playSound}
+
+      <FuturisticSplash
+        isVisible={showSplash}
+        onReturnToSession={handleReturnToSession}
       />
     </>
   )
 }
 
-const HiddenOverlay = ({ onShow, onExit }: { onShow: () => void, onExit: () => void }): React.JSX.Element => {
-  return (
-    <div className="hidden-overlay">
-      <button onClick={onShow} className="show-button">
-        L
-      </button>
-      <button onClick={onExit} className="exit-hidden-button">
-        &times;
-      </button>
-    </div>
-  )
-}
-
-const SessionFinished = ({ onRestart, onExit }: { onRestart: () => void, onExit: () => void }): React.JSX.Element => {
+const SessionFinished = ({
+  onRestart,
+  onExit
+}: {
+  onRestart: () => void
+  onExit: () => void
+}): React.JSX.Element => {
   return (
     <div className="session-finished">
-      <div className="text" style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '10px', color: '#69e688'}}>
+      <div
+        className="text"
+        style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px', color: '#69e688' }}
+      >
         Session Finished!
       </div>
-      <div className="intention-display" style={{marginBottom: '20px'}}>
+      <div className="intention-display" style={{ marginBottom: '20px' }}>
         Your locked-in session has ended. Good work!
       </div>
       <div className="actions">
@@ -309,7 +247,7 @@ const SessionFinished = ({ onRestart, onExit }: { onRestart: () => void, onExit:
 enum AppState {
   Input = 'input',
   Session = 'session',
-  Finished = 'finished',
+  Finished = 'finished'
 }
 
 const sessionViewWidth = 600
@@ -360,7 +298,14 @@ function App(): React.JSX.Element {
       content = <IntentionInput onStartSession={handleStartSession} />
       break
     case AppState.Session:
-      content = <SessionInProgress onHide={handleMinimize} onExit={handleExit} onFinish={handleFinish} durationMinutes={duration} />
+      content = (
+        <SessionInProgress
+          onHide={handleMinimize}
+          onExit={handleExit}
+          onFinish={handleFinish}
+          durationMinutes={duration}
+        />
+      )
       break
     case AppState.Finished:
       content = <SessionFinished onRestart={handleRestart} onExit={handleExit} />

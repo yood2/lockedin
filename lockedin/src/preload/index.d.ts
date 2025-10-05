@@ -10,6 +10,7 @@ declare global {
       minimizeWindow: () => void
       showSession: (width: number, height: number) => void
       exitApp: () => void
+      checkFocus: (imageDataUrl: string) => Promise<boolean>
       onAiResponse: (callback: (response: string, isError: boolean) => void) => (() => void)
       dismissOverlay: () => void
     }
