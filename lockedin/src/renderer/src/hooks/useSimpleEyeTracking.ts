@@ -55,18 +55,43 @@ export const useSimpleEyeTracking = () => {
       console.log('Initializing WebGazer...')
       
       window.webgazer.setRegression('ridge')
-      window.webgazer.showVideoPreview(false)
-      window.webgazer.showFaceOverlay(false)
-      window.webgazer.showFaceFeedbackBox(false)
+      window.webgazer.showVideoPreview(true) // Show video preview for calibration
+      window.webgazer.showFaceOverlay(true) // Show face overlay for debugging
+      window.webgazer.showFaceFeedbackBox(true) // Show feedback box
       
       window.webgazer.setGazeListener((data: WebGazerPrediction | null, clock: number) => {
         const now = Date.now()
         
-        // --- MODIFICATION START ---
-        // Instead of checking coordinates, we check if a prediction exists at all.
-        // If 'data' is not null, it means a face is detected.
-        const isLookingAtScreen = data !== null;
-        // --- MODIFICATION END ---
+        // Define a very small center box for focused studying
+        // These values create a box in the center of the screen
+        const screenWidth = window.innerWidth
+        const screenHeight = window.innerHeight
+        
+        // Make the box VERY small - only 20% of screen width and height, centered
+        const boxWidth = screenWidth * 0.2
+        const boxHeight = screenHeight * 0.2
+        const boxLeft = (screenWidth - boxWidth) / 2
+        const boxRight = boxLeft + boxWidth
+        const boxTop = (screenHeight - boxHeight) / 2
+        const boxBottom = boxTop + boxHeight
+        
+        // Check if gaze is within the small center box
+        let isLookingAtScreen = false
+        if (data !== null) {
+          const { x, y } = data
+          isLookingAtScreen = (
+            x >= boxLeft && 
+            x <= boxRight && 
+            y >= boxTop && 
+            y <= boxBottom
+          )
+          
+          if (!isLookingAtScreen) {
+            console.log(`Gaze outside bounds: (${x.toFixed(0)}, ${y.toFixed(0)}) - Box: ${boxLeft.toFixed(0)}-${boxRight.toFixed(0)} x ${boxTop.toFixed(0)}-${boxBottom.toFixed(0)}`)
+          }
+        } else {
+          console.log('WebGazer - No face detected')
+        }
 
         if (isLookingAtScreen) {
           if (lookAwayTimerRef.current) {
@@ -78,20 +103,19 @@ export const useSimpleEyeTracking = () => {
             ...prev,
             isLookingAtScreen: true,
             lastLookTime: now,
-            gazeX: data.x,
-            gazeY: data.y,
+            gazeX: data!.x,
+            gazeY: data!.y,
             isInitialized: true
           }))
           
         } else {
-          // data is null, which is a strong indicator that the face is not visible.
-          if (state.isLookingAtScreen) { // Only update state on change
+          if (state.isLookingAtScreen) {
             setState(prev => ({
               ...prev,
               isLookingAtScreen: false,
               isInitialized: true
             }))
-            console.log('WebGazer - Face lost, user is looking away.');
+            console.log('WebGazer - User is looking away from center box')
           }
         }
       })
