@@ -6,8 +6,10 @@
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      content="default-src 'self'; script-src 'self' https://webgazer.cs.brown.edu; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     />
+    <!-- WebGazer.js for reliable eye tracking -->
+    <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
   </head>
 
   <body>
