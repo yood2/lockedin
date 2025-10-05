@@ -101,11 +101,11 @@ let captureInterval: NodeJS.Timeout | null = null
 function updateOverlayVisibility(isVisible: boolean): void {
     if (!overlayWindow) return
 
+
     if (isVisible) {
-        if (overlayWindow.isMinimized()) {
-            overlayWindow.showInactive()
-        }
+        overlayWindow.show() 
         overlayWindow.setIgnoreMouseEvents(false)
+        overlayWindow.setAlwaysOnTop(true, 'normal') 
     } else {
         overlayWindow.hide()
         overlayWindow.setIgnoreMouseEvents(true)
@@ -131,16 +131,29 @@ async function performScreenCapture(): Promise<void> {
     captureService.cleanupOldScreenshots(10)
     console.log('Cleaned up old screenshots, keeping the last 10.')
     console.log('Calling Gemini API...')
+    
     var textResult = await analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
 
     if (overlayWindow) {
+      // 1. Show the window and enable clicks
+      updateOverlayVisibility(true) 
+      // 2. Send the success message
       overlayWindow.webContents.send('ai-response-update', textResult)
-      updateOverlayVisibility(true)
     }
     console.log('Gemini answer: ', textResult)
 
   } catch (error) {
-    console.error('Failed to capture screen:', error)
+    console.error('Failed to capture screen or AI analysis:', error)
+    
+    if (overlayWindow) {
+      // 1. Show the window and enable clicks
+      updateOverlayVisibility(true) 
+      // 2. Send the error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unknown error occurred during AI analysis.'
+      overlayWindow.webContents.send('ai-response-error', errorMessage)
+    }
   }
 }
 
@@ -179,6 +192,13 @@ ipcMain.on('show-session', (_event, width: number, height: number) => {
     mainWindow.setSize(width, height)
     mainWindow.center()
   }
+})
+
+ipcMain.on('overlay-dismissed', () => {
+    if (overlayWindow) {
+        overlayWindow.hide()
+        overlayWindow.setIgnoreMouseEvents(true)
+    }
 })
 
 ipcMain.on('exit-app', () => {
