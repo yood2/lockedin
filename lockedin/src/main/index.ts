@@ -7,8 +7,8 @@ import icon from '../../resources/icon.png?asset'
 let mainWindow: BrowserWindow | null = null
 
 const initialWidth = 400
-const initialHeight = 200
-const overlaySize = 60 // For the "minimized" button
+const initialHeight = 260
+const overlaySize = 60
 
 function createWindow(): void {
   // Create the browser window.
@@ -21,7 +21,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     frame: false, // Frameless window for overlay look
     transparent: true, // Transparent background
-    alwaysOnTop: true, // Always on top
+    alwaysOnTop: true,
     hasShadow: false, // No shadow for a cleaner overlay look
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -72,14 +72,13 @@ ipcMain.on('start-session', (event, width: number, height: number) => {
   }
 })
 
-ipcMain.on('hide-session', () => {
+ipcMain.on('hide-session', (event, width: number) => {
   if (mainWindow) {
     // Change to small overlay button size
-    mainWindow.setSize(overlaySize, overlaySize)
-    const display = require('electron').screen.getPrimaryDisplay()
-    const x = display.bounds.width - overlaySize - 20 // 20px padding from right
-    const y = display.bounds.height - overlaySize - 20 // 20px padding from bottom
-    mainWindow.setPosition(x, y, true)
+    const minimizedHeight = overlaySize
+    // Change to minimized height, maintaining the session width, and re-center.
+    mainWindow.setSize(width, minimizedHeight)
+    mainWindow.center()
   }
 })
 
