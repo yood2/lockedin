@@ -1,345 +1,141 @@
-// llm.service.ts
-import { GoogleGenerativeAI, GenerateContentRequest } from '@google/generative-ai';
-import createServiceLogger from '../core/logger';
-import loggerInstance from "../core/logger";
-import config from '../core/config';
-// TODO: Update the import path below if 'prompt-loader' is located elsewhere
-// import { promptLoader } from '../prompt-loader';
-import net from 'net';
-import https from 'https';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai'
+import * as fs from 'fs'
+import * as path from 'path'
 
+// Load API key from environment variables for security.
+// Ensure you have a .env file with GEMINI_API_KEY="your_api_key"
+// and are using a library like 'dotenv' (e.g., `require('dotenv').config()`) in your app's entry point.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
-interface LLMResponseMetadata {
-  skill: string;
-  programmingLanguage?: string | null;
-  processingTime: number;
-  requestId: number;
-  usedFallback: boolean;
-  isImageAnalysis?: boolean;
-  isTranscriptionResponse?: boolean;
-  mimeType?: string;
-}
-
-interface LLMResponse {
-  response: string;
-  metadata: LLMResponseMetadata;
-}
-
-interface ConnectivityTest {
-  host: string;
-  port: number;
-  name: string;
-}
-
-interface ConnectivityResult extends ConnectivityTest {
-  success: boolean;
-  error: string | null;
-}
-
-class LLMService {
-  private client: GoogleGenerativeAI | null = null;
-  private model: any = null;
-  private isInitialized = false;
-  private requestCount = 0;
-  private errorCount = 0;
-  private logger: Logger;
+/**
+ * A service to analyze screenshots using the Gemini API based on a given prompt and user intention.
+ */
+class GeminiAnalysisService {
+  private model: any // Using 'any' for simplicity, replace with specific Gemini model type if available
+  public isInitialized = false
 
   constructor() {
-    this.logger = loggerInstance.createServiceLogger("LLMService");
-    this.initializeClient();
-  }
-
-  private initializeClient(): void {
-    const apiKey = config.getApiKey('GEMINI');
-
-    if (!apiKey || apiKey === 'your-api-key-here') {
-      this.logger.warn('Gemini API key not configured', { 
-        keyExists: !!apiKey,
-        isPlaceholder: apiKey === 'your-api-key-here'
-      });
-      return;
+    if (!GEMINI_API_KEY) {
+      console.error('Gemini API key is not set in environment variables.')
+      return
     }
 
     try {
-      this.client = new GoogleGenerativeAI(apiKey);
-      this.model = this.client.getGenerativeModel({ 
-        model: config.get('llm.gemini.model') 
-      });
-      this.isInitialized = true;
-      
-      this.logger.info('Gemini AI client initialized successfully', {
-        model: config.get('llm.gemini.model')
-      });
-    } catch (error: any) {
-      this.logger.error('Failed to initialize Gemini client', { 
-        error: error.message 
-      });
-    }
-  }
-
-  // -------------------------------
-  // Public API
-  // -------------------------------
-
-  public async processTextWithSkill(
-    text: string, 
-    activeSkill: string, 
-    sessionMemory: string[] = [], 
-    programmingLanguage: string | null = null
-  ): Promise<LLMResponse> {
-    if (!this.isInitialized) {
-      throw new Error('LLM service not initialized. Check Gemini API key configuration.');
-    }
-
-    const startTime = Date.now();
-    this.requestCount++;
-
-    try {
-      this.logger.info('Processing text with LLM', {
-        activeSkill,
-        textLength: text.length,
-        hasSessionMemory: sessionMemory.length > 0,
-        programmingLanguage: programmingLanguage || 'not specified',
-        requestId: this.requestCount
-      });
-
-      const geminiRequest = this.buildGeminiRequest(text, activeSkill, sessionMemory, programmingLanguage);
-
-      let response: string;
-      try {
-        response = await this.executeRequest(geminiRequest);
-      } catch (error: any) {
-        if (error.message.includes('fetch failed') && config.get('llm.gemini.enableFallbackMethod')) {
-          this.logger.warn('Standard request failed, trying alternative method', {
-            error: error.message,
-            requestId: this.requestCount
-          });
-          response = await this.executeAlternativeRequest(geminiRequest);
-        } else {
-          throw error;
-        }
-      }
-
-      const finalResponse = programmingLanguage
-        ? this.enforceProgrammingLanguage(response, programmingLanguage)
-        : response;
-
-      this.logger.logPerformance('LLM text processing', startTime, {
-        activeSkill,
-        textLength: text.length,
-        responseLength: finalResponse.length,
-        programmingLanguage: programmingLanguage || 'not specified',
-        requestId: this.requestCount
-      });
-
-      return {
-        response: finalResponse,
-        metadata: {
-          skill: activeSkill,
-          programmingLanguage,
-          processingTime: Date.now() - startTime,
-          requestId: this.requestCount,
-          usedFallback: false
-        }
-      };
-    } catch (error: any) {
-      this.errorCount++;
-      this.logger.error('LLM processing failed', {
-        error: error.message,
-        activeSkill,
-        programmingLanguage: programmingLanguage || 'not specified',
-        requestId: this.requestCount
-      });
-
-      if (config.get('llm.gemini.fallbackEnabled')) {
-        return this.generateFallbackResponse(text, activeSkill);
-      }
-      
-      throw error;
-    }
-  }
-
-  public updateApiKey(newApiKey: string): void {
-    process.env.GEMINI_API_KEY = newApiKey;
-    this.isInitialized = false;
-    this.initializeClient();
-    this.logger.info('API key updated and client reinitialized');
-  }
-
-  public getStats() {
-    return {
-      isInitialized: this.isInitialized,
-      requestCount: this.requestCount,
-      errorCount: this.errorCount,
-      successRate: this.requestCount > 0 ? ((this.requestCount - this.errorCount) / this.requestCount) * 100 : 0,
-      config: config.get('llm.gemini')
-    };
-  }
-
-  // -------------------------------
-  // Private Helpers
-  // -------------------------------
-
-  private buildGeminiRequest(
-    text: string, 
-    activeSkill: string, 
-    sessionMemory: string[], 
-    programmingLanguage: string | null
-  ): GenerateContentRequest {
-    const requestComponents = promptLoader.getRequestComponents(
-      activeSkill, 
-      text, 
-      sessionMemory,
-      programmingLanguage
-    );
-
-    const request: GenerateContentRequest = {
-      contents: [{
-        role: 'user',
-        parts: [{ text: this.formatUserMessage(text, activeSkill) }]
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-        topK: 40,
-        topP: 0.95
-      }
-    };
-
-    if (requestComponents.shouldUseModelMemory && requestComponents.skillPrompt) {
-      request.systemInstruction = { parts: [{ text: requestComponents.skillPrompt }] };
-    }
-
-    return request;
-  }
-
-  private formatUserMessage(text: string, activeSkill: string): string {
-    return `Context: ${activeSkill.toUpperCase()} analysis request\n\nText to analyze:\n${text}`;
-  }
-
-  private enforceProgrammingLanguage(text: string, programmingLanguage: string): string {
-    if (!text || !programmingLanguage) return text;
-
-    const fenceTagMap: Record<string, string> = { cpp: 'cpp', c: 'c', python: 'python', java: 'java', javascript: 'javascript', js: 'javascript' };
-    const fenceTag = fenceTagMap[programmingLanguage.toLowerCase()] || programmingLanguage.toLowerCase();
-
-    let normalized = text.replace(/```([^\n]*)\n/g, () => '```' + fenceTag + '\n');
-    normalized = normalized.replace(/~~~([^\n]*)\n/g, () => '```' + fenceTag + '\n');
-
-    return normalized;
-  }
-
-  private async executeRequest(request: GenerateContentRequest): Promise<string> {
-    if (!this.model) throw new Error('Gemini model is not initialized');
-
-    const maxRetries = config.get('llm.gemini.maxRetries');
-    const timeout = config.get('llm.gemini.timeout');
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        await this.performPreflightCheck();
-
-        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Request timeout')), timeout));
-        const requestPromise = this.model.generateContent(request);
-        const result = await Promise.race([requestPromise, timeoutPromise]);
-
-        if (!result.response) throw new Error('Empty response from Gemini API');
-        const responseText = result.response.text();
-        if (!responseText || responseText.trim().length === 0) throw new Error('Empty text content in Gemini response');
-
-        return responseText.trim();
-      } catch (error: any) {
-        if (attempt === maxRetries) throw error;
-        const delayMs = 1000 * attempt + Math.random() * 1000;
-        await new Promise(res => setTimeout(res, delayMs));
-      }
-    }
-
-    throw new Error('Failed to execute Gemini request after retries');
-  }
-
-  private async performPreflightCheck(): Promise<void> {
-    try {
-      await this.testNetworkConnection({ host: 'generativelanguage.googleapis.com', port: 443, name: 'Gemini API Endpoint' });
-    } catch {
-      // Preflight check failure is non-blocking
-    }
-  }
-
-  private async testNetworkConnection({ host, port }: ConnectivityTest): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const socket = new net.Socket();
-      const timeout = setTimeout(() => {
-        socket.destroy();
-        reject(new Error(`Connection timeout to ${host}:${port}`));
-      }, 5000);
-
-      socket.on('connect', () => {
-        clearTimeout(timeout);
-        socket.destroy();
-        resolve(true);
-      });
-
-      socket.on('error', (err) => {
-        clearTimeout(timeout);
-        reject(new Error(`Connection failed to ${host}:${port}: ${err.message}`));
-      });
-
-      socket.connect(port, host);
-    });
-  }
-
-  private generateFallbackResponse(text: string, activeSkill: string): LLMResponse {
-    const fallbackResponses: Record<string, string> = {
-      'study-helper': 'I was unable to analyze the content. Please try again or ensure your API key is configured correctly.',
-      'default': 'I can help analyze this content. Please ensure your Gemini API key is properly configured for detailed analysis.'
-    };
-
-    const response = fallbackResponses[activeSkill] || fallbackResponses.default;
-
-    return {
-      response,
-      metadata: {
-        skill: activeSkill,
-        processingTime: 0,
-        requestId: this.requestCount,
-        usedFallback: true
-      }
-    };
-  }
-
-  private async executeAlternativeRequest(request: GenerateContentRequest): Promise<string> {
-    const apiKey = config.getApiKey('GEMINI');
-    const model = config.get('llm.gemini.model');
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const postData = JSON.stringify(request);
-
-    return new Promise((resolve, reject) => {
-      const req = https.request(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
-        timeout: config.get('llm.gemini.timeout')
-      }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          try {
-            if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}: ${data}`));
-            const response = JSON.parse(data);
-            const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) return reject(new Error('Empty response text'));
-            resolve(text.trim());
-          } catch (err: any) {
-            reject(err);
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+      this.model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash', // Use a model that supports multimodal input (text and image)
+        // Safety settings can be adjusted to be less restrictive if needed
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE
           }
-        });
-      });
+        ]
+      })
+      this.isInitialized = true
+      console.log('Gemini Analysis Service initialized successfully.')
+    } catch (error) {
+      console.error('Failed to initialize Gemini client:', error)
+    }
+  }
 
-      req.on('error', err => reject(err));
-      req.write(postData);
-      req.end();
-    });
+  /**
+   * Analyzes a screenshot to determine if the user is on task.
+   *
+   * @param agentPrompt The system prompt that defines the AI's behavior and response rules.
+   * @param userIntention The specific task the user is supposed to be focusing on.
+   * @param screenshotBuffer A Buffer containing the image data of the screenshot (e.g., from a PNG file).
+   * @returns A promise that resolves to the AI's text response.
+   */
+  public async analyzeScreenshot(
+    agentPrompt: string,
+    userIntention: string,
+    screenshotBuffer: Buffer
+  ): Promise<string> {
+    if (!this.isInitialized) {
+      throw new Error('Gemini service is not initialized. Check your API key.')
+    }
+    if (!screenshotBuffer || screenshotBuffer.length === 0) {
+      throw new Error('Screenshot buffer is empty or invalid.')
+    }
+
+    // 1. Prepare the image data for the API call.
+    const imageParts = [
+      {
+        inlineData: {
+          data: screenshotBuffer.toString('base64'),
+          mimeType: 'image/png'
+        }
+      }
+    ]
+
+    // 2. Create the explicit instruction for the model.
+    // This tells the model to perform OCR and then use the user's intention.
+    const instructionText = `The user's current task is: "${userIntention}". First, perform OCR on the following image to extract all of its text. Then, using that extracted text, follow your system prompt's rules to determine if the user is on task.`
+
+    // 3. Construct the full request with all three components.
+    const request = {
+      // The first part: The agent's core behavior prompt
+      systemInstruction: {
+        parts: [{ text: agentPrompt }]
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            // The second part: The user's intention (as text)
+            { text: instructionText },
+            // The third part: The screenshot (as an image)
+            ...imageParts
+          ]
+        }
+      ]
+    }
+
+    try {
+      console.log('Sending request to Gemini API...')
+      const result = await this.model.generateContent(request)
+      const response = result.response
+      const textResponse = response.text()
+      console.log('Gemini API response received:', textResponse)
+      return textResponse
+    } catch (error) {
+      console.error('Error calling Gemini API:', error)
+      throw new Error('Failed to get a response from the Gemini API.')
+    }
   }
 }
 
-export default new LLMService();
+
+// Exportable function for use in index.ts
+const agentPrompt = fs.readFileSync(
+  path.join(__dirname, '../../prompts/study-helper.md'),
+  'utf-8'
+);
+
+const analyzer = new GeminiAnalysisService();
+
+/**
+ * Analyze a screenshot using Gemini API and return the response.
+ * @param screenshotBuffer Buffer containing the screenshot image (PNG)
+ * @param sessionIntention The user's current intention/task
+ * @returns Promise<string> Gemini API response
+ */
+export async function analyzeScreenshotWithGemini(screenshotBuffer: Buffer, sessionIntention: string): Promise<string> {
+  if (!analyzer.isInitialized) {
+    throw new Error('Gemini service is not initialized. Check your API key.');
+  }
+  return analyzer.analyzeScreenshot(agentPrompt, sessionIntention, screenshotBuffer);
+}

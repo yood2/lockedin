@@ -1,8 +1,10 @@
+import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import captureService from '../services/capture.service'
+import { analyzeScreenshotWithGemini } from '../services/llm.service'
 
 // Keep a reference to the main window
 let mainWindow: BrowserWindow | null = null
@@ -75,6 +77,10 @@ async function performScreenCapture(): Promise<void> {
     // Clean up old screenshots, keeping only the most recent 10
     captureService.cleanupOldScreenshots(10)
     console.log('Cleaned up old screenshots, keeping the last 10.')
+    console.log('Calling Gemini API...')
+    var textResult = analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
+    console.log('Gemini answer: ', textResult)
+
   } catch (error) {
     console.error('Failed to capture screen:', error)
   }
