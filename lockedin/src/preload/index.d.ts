@@ -10,6 +10,8 @@ declare global {
       minimizeWindow: () => void
       showSession: (width: number, height: number) => void
       exitApp: () => void
+      onAiResponse: (callback: (response: string, isError: boolean) => void) => (() => void)
+      dismissOverlay: () => void
     }
   }
 }
