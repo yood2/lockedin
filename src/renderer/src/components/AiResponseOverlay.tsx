@@ -36,15 +36,15 @@ export const AiResponseOverlayContainer = (): React.JSX.Element => {
     
     // Check if response is a short positive feedback (≤4 words)
     const wordCount = newResponse.trim().split(/\s+/).length
-    const isShortPositive = wordCount <= 4 && 
-      (newResponse.toLowerCase().includes('good job') || 
-       newResponse.toLowerCase().includes('great') ||
-       newResponse.toLowerCase().includes('well done') ||
-       newResponse.toLowerCase().includes('keep it up') ||
-       newResponse.toLowerCase().includes('nice work'))
+    // const isShortPositive = wordCount <= 4 && 
+    //   (newResponse.toLowerCase().includes('good job') || 
+    //    newResponse.toLowerCase().includes('great') ||
+    //    newResponse.toLowerCase().includes('well done') ||
+    //    newResponse.toLowerCase().includes('keep it up') ||
+    //    newResponse.toLowerCase().includes('nice work'))
     
     // Don't show overlay for short positive responses
-    if (isShortPositive) {
+    if (newResponse === '') {
       console.log('🎉 [OVERLAY] Short positive response detected, hiding overlay:', newResponse)
       setShowResponse(false)
       dismissOverlay()

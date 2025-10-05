@@ -36,7 +36,8 @@ export const api = {
     longestUnfocusedStreakSec: number
   }> => ipcRenderer.invoke('get-session-summary'),
   endSession: (): void => ipcRenderer.send('end-session'),
-  dismissOverlay: (): void => ipcRenderer.send('overlay-dismissed')
+  dismissOverlay: (): void => ipcRenderer.send('overlay-dismissed'),
+  restoreWindowAndFocus: (): void => ipcRenderer.send('restore-window-and-focus')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
