@@ -388,3 +388,287 @@ button {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ========================================
+   Apple Liquid Glass iOS 26 Style Splash
+   ======================================== */
+
+.liquid-splash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+}
+
+.liquid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+  overflow: hidden;
+}
+
+.liquid-glass-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(100px) saturate(150%);
+  -webkit-backdrop-filter: blur(100px) saturate(150%);
+}
+
+.liquid-gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.4;
+  animation: float 20s ease-in-out infinite;
+}
+
+.liquid-orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255, 59, 48, 0.3) 0%, transparent 70%);
+  top: -200px;
+  left: -200px;
+  animation-delay: 0s;
+}
+
+.liquid-orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255, 69, 58, 0.25) 0%, transparent 70%);
+  bottom: -150px;
+  right: -150px;
+  animation-delay: -7s;
+}
+
+.liquid-orb-3 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255, 55, 95, 0.2) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -14s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.liquid-content-card {
+  position: relative;
+  z-index: 10;
+  max-width: 480px;
+  width: 90%;
+  padding: 48px 40px;
+  background: rgba(28, 28, 30, 0.85);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 40px 80px rgba(255, 59, 48, 0.1);
+  text-align: center;
+}
+
+.liquid-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 69, 58, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff453a;
+  letter-spacing: 0.3px;
+  margin-bottom: 24px;
+}
+
+.liquid-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 12px rgba(255, 69, 58, 0.8);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+.liquid-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.liquid-activity-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+.liquid-cta-button {
+  position: relative;
+  width: 100%;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #ff453a 0%, #ff375f 100%);
+  border: none;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 16px rgba(255, 69, 58, 0.4),
+    0 0 1px rgba(255, 255, 255, 0.2) inset;
+  -webkit-app-region: no-drag;
+}
+
+.liquid-cta-button:hover {
+  box-shadow: 
+    0 6px 24px rgba(255, 69, 58, 0.5),
+    0 0 1px rgba(255, 255, 255, 0.3) inset;
+  transform: translateY(-1px);
+}
+
+.liquid-cta-button:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 2px 8px rgba(255, 69, 58, 0.4),
+    0 0 1px rgba(255, 255, 255, 0.2) inset;
+}
+
+.liquid-button-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.liquid-cta-button:hover .liquid-button-glow {
+  opacity: 1;
+}
+
+.liquid-button-text {
+  position: relative;
+  z-index: 1;
+}
+
+.liquid-hint-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 16px 0 0 0;
+  line-height: 1.4;
+}
+
+.liquid-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.liquid-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, rgba(255, 69, 58, 0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .liquid-content-card {
+    padding: 36px 28px;
+    border-radius: 24px;
+  }
+
+  .liquid-title {
+    font-size: 28px;
+  }
+
+  .liquid-activity-text {
+    font-size: 15px;
+  }
+
+  .liquid-cta-button {
+    padding: 14px 28px;
+    font-size: 16px;
+  }
+}
+
+/* Futuristic Overlay (minimized view) */
+.futuristic-overlay-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+}
+
+.overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 20px;
+}

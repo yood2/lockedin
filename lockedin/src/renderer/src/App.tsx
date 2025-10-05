@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
+import { FuturisticOverlay } from './components/FuturisticOverlay'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
 
@@ -91,10 +92,11 @@ const SessionInProgress = ({
   const [intention, setIntention] = useState('Loading intention...')
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60)
   const [showSplash, setShowSplash] = useState(false)
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false)
   const intervalRef = useRef<number | undefined>(undefined)
 
   // Vision-based focus tracking
-  const { isFocused, isChecking, videoRef } = useLockdown()
+  const { isFocused, isChecking, userActivity, videoRef, resetFocus } = useLockdown()
 
   const memoizedOnFinish = useCallback(() => {
     onFinish()
@@ -119,15 +121,37 @@ const SessionInProgress = ({
     return () => clearInterval(intervalRef.current)
   }, [memoizedOnFinish, isFocused])
 
-  // Show splash screen when not focused
+  // Show splash screen when not focused (other activity detected)
   useEffect(() => {
-    if (!isFocused) {
+    console.log('Focus/Activity changed:', { isFocused, userActivity, showSplash })
+    
+    if (!isFocused && userActivity) {
+      console.log('✅ Off-task detected, showing splash:', userActivity)
       setShowSplash(true)
+    } else if (!isFocused && !userActivity) {
+      console.log('⚠️ Off-task but no userActivity yet')
+    } else if (isFocused) {
+      console.log('✓ User is focused')
     }
-  }, [isFocused])
+  }, [isFocused, userActivity])
 
   const handleReturnToSession = () => {
+    console.log('User clicked Ready to Lock In button')
+    // Reset focus state to "STUDYING" and resume timer
+    resetFocus()
+    // Hide splash after resetting focus
     setShowSplash(false)
+    console.log('User returned to session - focus reset to true, splash hidden')
+  }
+
+  const handleHide = () => {
+    setIsOverlayVisible(true)
+    onHide()
+  }
+
+  const handleExit = () => {
+    setIsOverlayVisible(false)
+    onExit()
   }
 
   const formatTime = (totalSeconds: number) => {
@@ -138,67 +162,94 @@ const SessionInProgress = ({
 
   return (
     <>
-      <video
-        ref={videoRef}
-        style={{
-          position: 'fixed',
-          top: '10px',
-          left: '10px',
-          width: '120px',
-          height: '90px',
-          borderRadius: '4px',
-          objectFit: 'cover',
-          opacity: 0.5
-        }}
-        width="640"
-        height="480"
-        autoPlay
-        muted
-        playsInline
-      />
+      {/* Main Session View - Hidden when overlay is active OR splash is showing */}
+      {!isOverlayVisible && !showSplash && (
+        <>
+          <video
+            ref={videoRef}
+            style={{
+              position: 'fixed',
+              top: '10px',
+              left: '10px',
+              width: '120px',
+              height: '90px',
+              borderRadius: '4px',
+              objectFit: 'cover',
+              opacity: 0.5
+            }}
+            width="640"
+            height="480"
+            autoPlay
+            muted
+            playsInline
+          />
 
-      <div className="session-progress">
-        <div className={`study-status ${isFocused ? 'status-studying' : 'status-away'}`}>
-          <div className="status-indicator" />
-          {isFocused ? 'STUDYING' : 'OFF-TASK DETECTED'}
-        </div>
+          <div className="session-progress">
+            <div className={`study-status ${isFocused ? 'status-studying' : 'status-away'}`}>
+              <div className="status-indicator" />
+              {isFocused ? 'STUDYING' : 'OFF-TASK DETECTED'}
+            </div>
 
-        <div className="text">Session in progress...</div>
-        <div className="intention-display">"{intention}"</div>
-        <div
-          className="timer-display"
-          style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
-            margin: '15px 0',
-            color: '#6988e6'
-          }}
-        >
-          {formatTime(timeLeft)}
-        </div>
+            {!isFocused && userActivity && (
+              <div style={{ fontSize: '12px', color: '#ee8686', marginTop: '4px' }}>
+                {userActivity}
+              </div>
+            )}
 
-        {isChecking && (
-          <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
-            Checking focus...
+            <div className="text">Session in progress...</div>
+            <div className="intention-display">"{intention}"</div>
+            <div
+              className="timer-display"
+              style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                margin: '15px 0',
+                color: '#6988e6'
+              }}
+            >
+              {formatTime(timeLeft)}
+            </div>
+
+            {isChecking && (
+              <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+                Checking focus...
+              </div>
+            )}
+
+            <div className="actions" style={{ marginTop: '20px' }}>
+              <div className="action">
+                <button onClick={handleHide} className="hide-button">
+                  Hide
+                </button>
+              </div>
+              <div className="action">
+                <button onClick={handleExit} className="exit-button">
+                  Exit
+                </button>
+              </div>
+            </div>
           </div>
-        )}
+        </>
+      )}
 
-        <div className="actions" style={{ marginTop: '20px' }}>
-          <div className="action">
-            <button onClick={onHide} className="hide-button">
-              Hide
-            </button>
-          </div>
-          <div className="action">
-            <button onClick={onExit} className="exit-button">
-              Exit
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Futuristic Overlay - Hidden when splash is showing */}
+      {!showSplash && (
+        <FuturisticOverlay
+          isVisible={isOverlayVisible}
+          isFocused={isFocused}
+          isChecking={isChecking}
+          userActivity={userActivity}
+          intention={intention}
+          timeLeft={timeLeft}
+          onHide={() => setIsOverlayVisible(false)}
+          onExit={handleExit}
+        />
+      )}
 
+      {/* Splash Screen for other activity detected - Takes over entire screen */}
       <FuturisticSplash
         isVisible={showSplash}
+        userActivity={userActivity}
         onReturnToSession={handleReturnToSession}
       />
     </>
