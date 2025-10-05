@@ -1,6 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { start } from 'repl'
 
 // Custom APIs for renderer
 const api = {
@@ -9,9 +8,7 @@ const api = {
   startSession: (width: number, height: number): void => ipcRenderer.send('start-session', width, height),
   minimizeWindow: (): void => ipcRenderer.send('minimize-window'),
   showSession: (width: number, height: number): void => ipcRenderer.send('show-session', width, height),
-  exitApp: (): void => ipcRenderer.send('exit-app'),
-  startScreenshotTimer: (): void => ipcRenderer.send('start-screenshot-timer'),
-  stopScreenshotTimer: (): void => ipcRenderer.send('stop-screenshot-timer')
+  exitApp: (): void => ipcRenderer.send('exit-app')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

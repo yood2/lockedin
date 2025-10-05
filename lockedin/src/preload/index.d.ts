@@ -10,8 +10,6 @@ declare global {
       minimizeWindow: () => void
       showSession: (width: number, height: number) => void
       exitApp: () => void
-      startScreenshotTimer: () => void
-      stopScreenshotTimer: () => void
     }
   }
 }

@@ -265,6 +265,19 @@ return (
   )
 }
 
+const HiddenOverlay = ({ onShow, onExit }: { onShow: () => void, onExit: () => void }): React.JSX.Element => {
+  return (
+    <div className="hidden-overlay">
+      <button onClick={onShow} className="show-button">
+        L
+      </button>
+      <button onClick={onExit} className="exit-hidden-button">
+        &times;
+      </button>
+    </div>
+  )
+}
+
 const SessionFinished = ({ onRestart, onExit }: { onRestart: () => void, onExit: () => void }): React.JSX.Element => {
   return (
     <div className="session-finished">
@@ -311,12 +324,10 @@ function App(): React.JSX.Element {
     window.api.setSessionIntention(intention)
     setDuration(durationMinutes)
     window.api.startSession(sessionViewWidth, sessionViewHeight)
-    window.api.startScreenshotTimer()
     setAppState(AppState.Session)
   }
 
   const handleFinish = () => {
-    window.api.stopScreenshotTimer()
     window.api.showSession(inputViewWidth, inputViewHeight)
     setAppState(AppState.Finished)
   }
@@ -326,13 +337,11 @@ function App(): React.JSX.Element {
   }
 
   const handleRestart = () => {
-    window.api.stopScreenshotTimer()
     window.api.showSession(inputViewWidth, inputViewHeight)
     setAppState(AppState.Input)
   }
 
   const handleExit = () => {
-    window.api.stopScreenshotTimer()
     window.api.exitApp()
   }
 
