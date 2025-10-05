@@ -3,13 +3,26 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
+// Keep a reference to the main window
+let mainWindow: BrowserWindow | null = null
+
+const initialWidth = 400
+const initialHeight = 200
+const overlaySize = 60 // For the "minimized" button
+
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+  mainWindow = new BrowserWindow({
+    width: initialWidth,
+    height: initialHeight,
+    minWidth: overlaySize,
+    minHeight: overlaySize,
     show: false,
     autoHideMenuBar: true,
+    frame: false, // Frameless window for overlay look
+    transparent: true, // Transparent background
+    alwaysOnTop: true, // Always on top
+    hasShadow: false, // No shadow for a cleaner overlay look
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -17,8 +30,11 @@ function createWindow(): void {
     }
   })
 
+  // Center the window initially
+  mainWindow.center()
+
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow!.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -34,6 +50,51 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+// Global variable to store session intention
+let sessionIntention: string | null = null
+
+// IPC Handlers
+ipcMain.on('set-intention', (event, intention: string) => {
+  sessionIntention = intention
+  console.log('Session Intention Set:', sessionIntention)
+})
+
+ipcMain.handle('get-intention', () => {
+  return sessionIntention
+})
+
+ipcMain.on('start-session', (event, width: number, height: number) => {
+  if (mainWindow) {
+    // Resize for "Session in progress" view
+    mainWindow.setSize(width, height)
+    mainWindow.center()
+  }
+})
+
+ipcMain.on('hide-session', () => {
+  if (mainWindow) {
+    // Change to small overlay button size
+    mainWindow.setSize(overlaySize, overlaySize)
+    const display = require('electron').screen.getPrimaryDisplay()
+    const x = display.bounds.width - overlaySize - 20 // 20px padding from right
+    const y = display.bounds.height - overlaySize - 20 // 20px padding from bottom
+    mainWindow.setPosition(x, y, true)
+  }
+})
+
+ipcMain.on('show-session', (event, width: number, height: number) => {
+  if (mainWindow) {
+    // Restore size to "Session in progress" view
+    mainWindow.setSize(width, height)
+    mainWindow.center()
+  }
+})
+
+ipcMain.on('exit-app', () => {
+  app.quit()
+})
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

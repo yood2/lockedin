@@ -5,150 +5,174 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background-image: url('./wavy-lines.svg');
+  /* background-image: url('./wavy-lines.svg'); */
   background-size: cover;
   user-select: none;
+  -webkit-app-region: drag; /* Enable drag for frameless window */
+  padding: 20px; /* Add padding for content */
 }
 
-code {
-  font-weight: 600;
-  padding: 3px 5px;
-  border-radius: 2px;
-  background-color: var(--color-background-mute);
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    SF Mono,
-    Menlo,
-    Consolas,
-    Liberation Mono,
-    monospace;
-  font-size: 85%;
-}
-
-#root {
+/* New container for content to restore click/input regions and manage background */
+#root-content {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  margin-bottom: 80px;
+  -webkit-app-region: no-drag; /* Disable drag inside content */
+  padding: 20px;
+  background-color: var(--ev-c-black-soft); /* Solid background for content */
+  border: 1px solid var(--ev-c-gray-1);
+  border-radius: 10px;
+  /* Add minimum size for initial input view */
+  min-width: 360px;
+  min-height: 160px;
 }
+
+/* Styles for Intention Input View */
+.intention-input-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.intention-input {
+  background-color: var(--ev-c-gray-3);
+  border: 1px solid var(--ev-c-gray-1);
+  color: var(--ev-c-text-1);
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 16px;
+  width: 100%;
+  margin: 10px 0;
+  -webkit-app-region: no-drag;
+}
+
+.intention-input::placeholder {
+  color: var(--ev-c-text-3);
+}
+
+.start-button {
+  background-color: #6988e6;
+  color: var(--ev-c-white);
+  border-color: #6988e6;
+}
+
+.start-button:hover {
+  background-color: #4b66b8;
+  border-color: #4b66b8;
+}
+
+/* Styles for Session In Progress View */
+.session-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.intention-display {
+  font-size: 16px;
+  color: var(--ev-c-text-2);
+  margin-top: 5px;
+}
+
+.hide-button {
+  /* Default alt button style */
+}
+
+.exit-button {
+  background-color: #ff5555;
+  color: var(--ev-c-white);
+  border-color: #ff5555;
+}
+
+.exit-button:hover {
+  background-color: #cc4444;
+  border-color: #cc4444;
+}
+
+/* Styles for Hidden Overlay View (Small Button) */
+#root-content.app-state-hidden {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  width: 60px; /* Match main.ts overlaySize */
+  height: 60px; /* Match main.ts overlaySize */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.hidden-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-color: transparent;
+  width: 100%;
+  height: 100%;
+}
+
+.show-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #6988e6;
+  color: var(--ev-c-white);
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  line-height: 40px;
+  font-size: 20px;
+  padding: 0;
+}
+
+.show-button:hover {
+  background-color: #4b66b8;
+}
+
+.exit-hidden-button {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #ff5555;
+  color: white;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  line-height: 1; 
+  font-size: 16px;
+  padding: 0;
+}
+
+.exit-hidden-button:hover {
+  background-color: #cc4444;
+}
+
+/* Original styles adjusted or hidden */
 
 .logo {
   margin-bottom: 20px;
   -webkit-user-drag: none;
-  height: 128px;
-  width: 128px;
+  height: 64px; /* Reduced logo size for a more compact UI */
+  width: 64px;
   will-change: filter;
   transition: filter 300ms;
 }
 
-.logo:hover {
-  filter: drop-shadow(0 0 1.2em #6988e6aa);
-}
-
-.creator {
-  font-size: 14px;
-  line-height: 16px;
-  color: var(--ev-c-text-2);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.text {
-  font-size: 28px;
-  color: var(--ev-c-text-1);
-  font-weight: 700;
-  line-height: 32px;
-  text-align: center;
-  margin: 0 10px;
-  padding: 16px 0;
-}
-
-.tip {
-  font-size: 16px;
-  line-height: 24px;
-  color: var(--ev-c-text-2);
-  font-weight: 600;
-}
-
-.react {
-  background: -webkit-linear-gradient(315deg, #087ea4 55%, #7c93ee);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
-}
-
-.ts {
-  background: -webkit-linear-gradient(315deg, #3178c6 45%, #f0dc4e);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 700;
-}
-
-.actions {
-  display: flex;
-  padding-top: 32px;
-  margin: -6px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-.action {
-  flex-shrink: 0;
-  padding: 6px;
-}
-
-.action a {
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  border: 1px solid transparent;
-  text-align: center;
-  font-weight: 600;
-  white-space: nowrap;
-  border-radius: 20px;
-  padding: 0 20px;
-  line-height: 38px;
-  font-size: 14px;
-  border-color: var(--ev-button-alt-border);
-  color: var(--ev-button-alt-text);
-  background-color: var(--ev-button-alt-bg);
-}
-
-.action a:hover {
-  border-color: var(--ev-button-alt-hover-border);
-  color: var(--ev-button-alt-hover-text);
-  background-color: var(--ev-button-alt-hover-bg);
+#root {
+  margin-bottom: 0; /* Adjusted/Removed */
 }
 
 .versions {
-  position: absolute;
-  bottom: 30px;
-  margin: 0 auto;
-  padding: 15px 0;
-  font-family: 'Menlo', 'Lucida Console', monospace;
-  display: inline-flex;
-  overflow: hidden;
-  align-items: center;
-  border-radius: 22px;
-  background-color: #202127;
-  backdrop-filter: blur(24px);
-}
-
-.versions li {
-  display: block;
-  float: left;
-  border-right: 1px solid var(--ev-c-gray-1);
-  padding: 0 20px;
-  font-size: 14px;
-  line-height: 14px;
-  opacity: 0.8;
-  &:last-child {
-    border: none;
-  }
+  display: none; /* Hide for overlay */
 }
 
 @media (max-width: 720px) {
@@ -164,8 +188,11 @@ code {
 }
 
 @media (max-width: 350px) {
-  .tip,
-  .actions {
+  /* Keep only .actions for this query, rest are implicit */
+  .tip {
     display: none;
+  }
+  .actions {
+    justify-content: center;
   }
 }
