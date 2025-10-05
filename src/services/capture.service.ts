@@ -47,13 +47,21 @@ class CaptureService {
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `screenshot_${timestamp}.png`;
-      const screenshotsDir = path.join(__dirname, '../../screenshots');
+      
+      // Use absolute path to ensure screenshots are saved in the correct location
+      // This works whether running from source or compiled output
+      const projectRoot = path.resolve(__dirname, '../../../');
+      const screenshotsDir = path.join(projectRoot, 'screenshots');
+      
+      console.log('📁 [CAPTURE] Screenshots directory:', screenshotsDir);
 
       if (!fs.existsSync(screenshotsDir)) {
+        console.log('📁 [CAPTURE] Creating screenshots directory:', screenshotsDir);
         fs.mkdirSync(screenshotsDir, { recursive: true });
       }
 
       const filepath = path.join(screenshotsDir, filename);
+      console.log('💾 [CAPTURE] Saving screenshot to:', filepath);
       fs.writeFileSync(filepath, buffer);
 
       return {
@@ -100,7 +108,8 @@ class CaptureService {
   }
 
   getSavedScreenshots() {
-    const screenshotsDir = path.join(__dirname, '../../screenshots');
+    const projectRoot = path.resolve(__dirname, '../../../');
+    const screenshotsDir = path.join(projectRoot, 'screenshots');
     if (!fs.existsSync(screenshotsDir)) return [];
 
     return fs.readdirSync(screenshotsDir)
@@ -111,7 +120,11 @@ class CaptureService {
   cleanupOldScreenshots(keepCount = 10) {
     const screenshots = this.getSavedScreenshots();
     const toDelete = screenshots.slice(keepCount);
-    toDelete.forEach(file => fs.unlinkSync(file));
+    console.log(`🧹 [CAPTURE] Cleaning up ${toDelete.length} old screenshots, keeping ${keepCount}`);
+    toDelete.forEach(file => {
+      console.log(`🗑️ [CAPTURE] Deleting old screenshot:`, file);
+      fs.unlinkSync(file);
+    });
   }
 }
 

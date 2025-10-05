@@ -124,8 +124,37 @@ async function performScreenCapture(): Promise<void> {
 
   try {
     console.log('Capturing screen...')
+    
+    // Hide both main window and overlay during screenshot capture to avoid UI interference
+    const wasMainVisible = mainWindow?.isVisible() || false
+    const wasOverlayVisible = overlayWindow?.isVisible() || false
+    
+    if (mainWindow && wasMainVisible) {
+      console.log('📸 [SCREENSHOT] Temporarily hiding main window for clean capture')
+      mainWindow.hide()
+    }
+    
+    if (overlayWindow && wasOverlayVisible) {
+      console.log('📸 [SCREENSHOT] Temporarily hiding overlay for clean capture')
+      overlayWindow.hide()
+    }
+    
+    // Small delay to ensure windows are fully hidden before capture
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
     const result = await captureService.captureAndProcess()
     console.log(`Screenshot captured successfully. Path: ${result.localPath}`)
+    
+    // Restore window visibility if they were visible before
+    if (mainWindow && wasMainVisible) {
+      console.log('📸 [SCREENSHOT] Restoring main window visibility')
+      mainWindow.show()
+    }
+    
+    if (overlayWindow && wasOverlayVisible) {
+      console.log('📸 [SCREENSHOT] Restoring overlay visibility')
+      updateOverlayVisibility(true)
+    }
     
     // Clean up old screenshots, keeping only the most recent 10
     captureService.cleanupOldScreenshots(10)
@@ -145,8 +174,8 @@ async function performScreenCapture(): Promise<void> {
   } catch (error) {
     console.error('Failed to capture screen or AI analysis:', error)
     
+    // Ensure overlay is restored even on error
     if (overlayWindow) {
-      // 1. Show the window and enable clicks
       updateOverlayVisibility(true) 
       // 2. Send the error message
       const errorMessage = error instanceof Error 
