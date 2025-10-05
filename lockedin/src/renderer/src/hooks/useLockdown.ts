@@ -1,0 +1,90 @@
+import { useState, useEffect, useRef } from 'react'
+
+export const useLockdown = () => {
+  const [isFocused, setIsFocused] = useState(true)
+  const [isChecking, setIsChecking] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const intervalRef = useRef<number | null>(null)
+
+  const start = () => {
+    navigator.mediaDevices
+      .getUserMedia({
+        video: {
+          width: 640,
+          height: 480,
+          facingMode: 'user'
+        }
+      })
+      .then((stream) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+        console.log('Webcam stream started')
+      })
+      .catch((err) => {
+        console.error('Failed to get webcam access:', err)
+      })
+
+    // Check focus every 20 seconds
+    intervalRef.current = setInterval(checkFocus, 20000) as unknown as number
+  }
+
+  const stop = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach((track) => track.stop())
+      videoRef.current.srcObject = null
+      console.log('Webcam stream stopped')
+    }
+  }
+
+  const checkFocus = async () => {
+    if (isChecking || !videoRef.current || videoRef.current.readyState < 3) {
+      return
+    }
+
+    setIsChecking(true)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = videoRef.current.videoWidth
+    canvas.height = videoRef.current.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      setIsChecking(false)
+      return
+    }
+
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+    const imageDataUrl = canvas.toDataURL('image/jpeg')
+
+    try {
+      console.log('Sending webcam snapshot for focus check...')
+      const result = await window.api.checkFocus(imageDataUrl)
+      setIsFocused(result)
+      console.log(`Focus check complete. isFocused=${result}`)
+    } catch (error) {
+      console.error('Focus check failed:', error)
+      // Default to focused to avoid interrupting the user on API errors
+      setIsFocused(true)
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  useEffect(() => {
+    start()
+    return () => {
+      stop()
+    }
+  }, [])
+
+  return {
+    isFocused,
+    isChecking,
+    videoRef
+  }
+}

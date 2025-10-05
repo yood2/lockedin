@@ -2,13 +2,18 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
-const api = {
+export const api = {
   setSessionIntention: (intention: string): void => ipcRenderer.send('set-intention', intention),
   getSessionIntention: (): Promise<string | null> => ipcRenderer.invoke('get-intention'),
   startSession: (width: number, height: number): void => ipcRenderer.send('start-session', width, height),
   minimizeWindow: (): void => ipcRenderer.send('minimize-window'),
   showSession: (width: number, height: number): void => ipcRenderer.send('show-session', width, height),
-  exitApp: (): void => ipcRenderer.send('exit-app')
+  exitApp: (): void => {
+    ipcRenderer.send('exit-app')
+  },
+  checkFocus: (imageDataUrl: string): Promise<boolean> => {
+    return ipcRenderer.invoke('check-focus', imageDataUrl)
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

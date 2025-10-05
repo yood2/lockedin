@@ -7,4 +7,6 @@ out
 .vscode
 build
 screenshots
+# local env files
 .env
+.env*.local
