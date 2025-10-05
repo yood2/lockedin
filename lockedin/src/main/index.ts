@@ -8,21 +8,20 @@ let mainWindow: BrowserWindow | null = null
 
 const initialWidth = 400
 const initialHeight = 260
-const overlaySize = 60
 
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: initialWidth,
     height: initialHeight,
-    minWidth: overlaySize,
-    minHeight: overlaySize,
+    minWidth: initialWidth,
+    minHeight: initialHeight,
     show: false,
     autoHideMenuBar: true,
-    frame: false, // Frameless window for overlay look
-    transparent: true, // Transparent background
+    frame: false,
+    transparent: true,
     alwaysOnTop: true,
-    hasShadow: false, // No shadow for a cleaner overlay look
+    hasShadow: false,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -72,19 +71,15 @@ ipcMain.on('start-session', (event, width: number, height: number) => {
   }
 })
 
-ipcMain.on('hide-session', (event, width: number) => {
+ipcMain.on('minimize-window', () => {
   if (mainWindow) {
-    // Change to small overlay button size
-    const minimizedHeight = overlaySize
-    // Change to minimized height, maintaining the session width, and re-center.
-    mainWindow.setSize(width, minimizedHeight)
-    mainWindow.center()
+    mainWindow.minimize()
   }
 })
 
 ipcMain.on('show-session', (event, width: number, height: number) => {
   if (mainWindow) {
-    // Restore size to "Session in progress" view
+    mainWindow.setMinimumSize(initialWidth, initialHeight)
     mainWindow.setSize(width, height)
     mainWindow.center()
   }

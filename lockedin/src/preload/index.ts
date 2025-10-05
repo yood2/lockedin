@@ -6,7 +6,7 @@ const api = {
   setSessionIntention: (intention: string): void => ipcRenderer.send('set-intention', intention),
   getSessionIntention: (): Promise<string | null> => ipcRenderer.invoke('get-intention'),
   startSession: (width: number, height: number): void => ipcRenderer.send('start-session', width, height),
-  hideSession: (width: number): void => ipcRenderer.send('hide-session', width),
+  minimizeWindow: (): void => ipcRenderer.send('minimize-window'),
   showSession: (width: number, height: number): void => ipcRenderer.send('show-session', width, height),
   exitApp: (): void => ipcRenderer.send('exit-app')
 }
