@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
 import { FuturisticOverlay } from './components/FuturisticOverlay'
-import { AnimatePresence, motion } from 'framer-motion'
 import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
 
 // --- Components for different views ---
@@ -85,7 +84,7 @@ const SessionInProgress = ({
   durationMinutes
 }: {
   onHide: () => void
-  onExit: () => void
+  onExit: (message: string) => void
   onFinish: () => void
   durationMinutes: number
 }): React.JSX.Element => {
@@ -150,8 +149,11 @@ const SessionInProgress = ({
   }
 
   const handleExit = () => {
+    console.log('user has locked in', durationMinutes)
+    const elapsedSeconds = Math.max(0, durationMinutes * 60 - timeLeft)
+    const message = `You've focused for ${formatTime(elapsedSeconds)} so far.`
     setIsOverlayVisible(false)
-    onExit()
+    onExit(message)
   }
 
   const formatTime = (totalSeconds: number) => {
@@ -262,10 +264,12 @@ const SessionInProgress = ({
 
 const SessionFinished = ({
   onRestart,
-  onExit
+  onExit,
+  exitMessage
 }: {
   onRestart: () => void
   onExit: () => void
+  exitMessage: string
 }): React.JSX.Element => {
   return (
     <div className="session-finished">
@@ -276,7 +280,7 @@ const SessionFinished = ({
         Session Finished!
       </div>
       <div className="intention-display" style={{ marginBottom: '20px' }}>
-        Your locked-in session has ended. Good work!
+        Your locked-in session has ended.{exitMessage && ` ${exitMessage}`} Good work!
       </div>
       <div className="actions">
         <div className="action">
@@ -318,6 +322,7 @@ function App(): React.JSX.Element {
 
   const [appState, setAppState] = useState<AppState>(AppState.Input)
   const [duration, setDuration] = useState(25)
+  const [exitMessage, setExitMessage] = useState('')
 
   const handleStartSession = (intention: string, durationMinutes: number) => {
     window.api.setSessionIntention(intention)
@@ -327,6 +332,13 @@ function App(): React.JSX.Element {
   }
 
   const handleFinish = () => {
+    window.api.showSession(inputViewWidth, inputViewHeight)
+    setExitMessage('') // Reset exit message for normal finish
+    setAppState(AppState.Finished)
+  }
+
+  const handleExitWithMessage = (message: string) => {
+    setExitMessage(message)
     window.api.showSession(inputViewWidth, inputViewHeight)
     setAppState(AppState.Finished)
   }
@@ -353,14 +365,14 @@ function App(): React.JSX.Element {
       content = (
         <SessionInProgress
           onHide={handleMinimize}
-          onExit={handleExit}
+          onExit={handleExitWithMessage}
           onFinish={handleFinish}
           durationMinutes={duration}
         />
       )
       break
     case AppState.Finished:
-      content = <SessionFinished onRestart={handleRestart} onExit={handleExit} />
+      content = <SessionFinished onRestart={handleRestart} onExit={handleExit} exitMessage={exitMessage} />
       break
     default:
       content = null
