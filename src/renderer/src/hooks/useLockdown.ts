@@ -60,7 +60,8 @@ export const useLockdown = () => {
     }
 
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
-    const imageDataUrl = canvas.toDataURL('image/jpeg')
+    // Use lower quality JPEG (0.6) for faster upload and processing
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6)
 
     try {
       console.log('Sending webcam snapshot for focus check...')
@@ -91,6 +92,12 @@ export const useLockdown = () => {
     console.log('Manually resetting focus to true')
     setIsFocused(true)
     setUserActivity('')
+    
+    // Restart the focus check interval if it was stopped
+    if (!intervalRef.current) {
+      console.log('Restarting focus check interval')
+      intervalRef.current = setInterval(checkFocus, 15000) as unknown as number
+    }
   }
 
   useEffect(() => {

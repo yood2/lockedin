@@ -45,8 +45,14 @@ export const checkFocusWithVision = async (
   }
 
   try {
-    // Switch to a supported multimodal model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    // Use gemini-2.0-flash-exp for faster performance with lower latency
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        temperature: 0.1, // Lower temperature for more consistent, faster responses
+        maxOutputTokens: 50, // Limit output since we only need JSON
+      }
+    })
     const imagePart = dataUrlToGcsPart(imageDataUrl)
 
     const result = await model.generateContent([focusPrompt, imagePart])

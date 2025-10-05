@@ -6,70 +6,45 @@ export const AiResponseOverlayContainer = (): React.JSX.Element => {
   const [isError, setIsError] = useState(false)
   const [showResponse, setShowResponse] = useState(false)
   const hideTimerRef = useRef<number | undefined>(undefined)
-  const lastResponseRef = useRef<string>('')
-  const lastBehaviorRef = useRef<string>('') // Track behavior type (focused/distracted)
+  const lastBehaviorRef = useRef<string>('')
 
   const dismissOverlay = window.api?.dismissOverlay || (() => {})
   
   const handleAiResponse = useCallback((newResponse: string, error: boolean) => {
-    const lowerResponse = newResponse.toLowerCase().trim()
-    
-    // Filter out "good job" responses (case insensitive)
-    if (lowerResponse === 'good job' || lowerResponse === 'good job!' || lowerResponse === 'good job.') {
-      console.log('Filtered out "good job" response')
+    const lower = (newResponse || '').toLowerCase().trim()
+
+    // Filter trivial responses
+    if (lower === 'good job' || lower === 'good job!' || lower === 'good job.') {
       return
     }
-    
-    // Detect behavior type from response
-    const isFocused = lowerResponse.includes('study') || 
-                      lowerResponse.includes('focus') || 
-                      lowerResponse.includes('work') ||
-                      lowerResponse.includes('reading') ||
-                      lowerResponse.includes('writing')
-    
-    const isDistracted = lowerResponse.includes('away') || 
-                         lowerResponse.includes('phone') || 
-                         lowerResponse.includes('distract') ||
-                         lowerResponse.includes('off-task') ||
-                         lowerResponse.includes('social media') ||
-                         lowerResponse.includes('refocus')
-    
-    const currentBehavior = isDistracted ? 'distracted' : (isFocused ? 'focused' : 'neutral')
-    
-    // Only show if behavior changed OR it's a meaningful distraction alert
-    const behaviorChanged = currentBehavior !== lastBehaviorRef.current
-    const isMeaningfulAlert = isDistracted && currentBehavior !== 'focused'
-    
-    if (!behaviorChanged && !isMeaningfulAlert) {
-      console.log('Filtered out repetitive response:', newResponse)
-      return
-    }
-    
-    // Update refs
-    lastResponseRef.current = newResponse
-    lastBehaviorRef.current = currentBehavior
-    
+
+    // Behavior detection
+    const isFocusedMsg = lower.includes('study') || lower.includes('focus') || lower.includes('work')
+    const isDistractedMsg = lower.includes('away') || lower.includes('phone') || lower.includes('distract') || lower.includes('off-task') || lower.includes('social media') || lower.includes('refocus') || lower.includes('valorant')
+
+    const behavior = isDistractedMsg ? 'distracted' : (isFocusedMsg ? 'focused' : 'neutral')
+
+    // Only show if behavior changed or it's a distraction alert
+    const behaviorChanged = behavior !== lastBehaviorRef.current
+    const shouldShow = behaviorChanged || isDistractedMsg
+    if (!shouldShow) return
+
+    lastBehaviorRef.current = behavior
+
     setResponse(newResponse)
     setIsError(error)
     setShowResponse(true)
-    
+
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
-    
     hideTimerRef.current = setTimeout(() => {
       setShowResponse(false)
       dismissOverlay()
-    }, 8000) as unknown as number // Reduced from 10s to 8s
-    
+    }, 8000) as unknown as number
   }, [dismissOverlay])
 
   useEffect(() => {
-    if (!window.api || !window.api.onAiResponse) {
-      console.error('API for AI response not available in preload.')
-      return
-    }
-
+    if (!window.api || !window.api.onAiResponse) return
     const cleanup = window.api.onAiResponse(handleAiResponse)
-    
     return () => {
       cleanup()
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current)

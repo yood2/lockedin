@@ -129,15 +129,12 @@ async function performScreenCapture(): Promise<void> {
     
     // Clean up old screenshots, keeping only the most recent 10
     captureService.cleanupOldScreenshots(10)
-    console.log('Cleaned up old screenshots, keeping the last 10.')
-    console.log('Calling Gemini API...')
     var textResult = await analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
 
     if (overlayWindow) {
       overlayWindow.webContents.send('ai-response-update', textResult)
       updateOverlayVisibility(true)
     }
-    console.log('Gemini answer: ', textResult)
 
   } catch (error) {
     console.error('Failed to capture screen:', error)
