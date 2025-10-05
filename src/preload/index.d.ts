@@ -13,6 +13,18 @@ declare global {
       checkFocus: (imageDataUrl: string) => Promise<boolean | { focused: boolean; user_activity: string }>
       onAiResponse: (callback: (response: string, isError: boolean) => void) => (() => void)
       dismissOverlay: () => void
+      getSessionSummary: () => Promise<{
+        sessionStart: string
+        sessionEnd: string
+        totalDurationSec: number
+        checks: number
+        totalUnfocusedSec: number
+        mostCommonDistraction: { activity: string; occurrences: number } | null
+        mostUsedAppActivity: { app: string; activity: string; occurrences: number } | null
+        focusRatio: number
+        longestUnfocusedStreakSec: number
+      }>
+      endSession: () => void
     }
   }
 }

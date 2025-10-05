@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
+import * as path from 'path'
 import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -103,6 +104,48 @@ function createOverlayWindow(): void {
 // Global variables for session and capture management
 let sessionIntention: string | null = null
 let captureInterval: NodeJS.Timeout | null = null
+
+// In-session aggregation for summary
+let sessionStartAt: number | null = null
+let lastCheckAt: number | null = null
+let sessionEndAt: number | null = null
+let totalUnfocusedMs = 0
+let checkCount = 0
+let currentUnfocusedStreakMs = 0
+let longestUnfocusedStreakMs = 0
+const activityCounts = new Map<string, number>()
+const appActivityCounts = new Map<string, number>()
+let lastFocused: boolean | null = null
+let finalizedTotalUnfocusedMs: number | null = null
+
+function incrementMap(map: Map<string, number>, key: string) {
+  if (!key) return
+  map.set(key, (map.get(key) || 0) + 1)
+}
+
+function getTopEntry(map: Map<string, number>): { key: string; count: number } | null {
+  let topKey = ''
+  let topCount = 0
+  for (const [k, v] of Array.from(map.entries())) {
+    if (v > topCount) {
+      topCount = v
+      topKey = k
+    }
+  }
+  return topCount > 0 ? { key: topKey, count: topCount } : null
+}
+
+function appendJsonl(filename: string, data: unknown) {
+  try {
+    const projectRoot = path.resolve(__dirname, '../../../')
+    const jsonLogsDir = join(projectRoot, 'json-logs')
+    if (!fs.existsSync(jsonLogsDir)) fs.mkdirSync(jsonLogsDir, { recursive: true })
+    const filePath = join(jsonLogsDir, filename)
+    fs.appendFileSync(filePath, JSON.stringify(data) + '\n', 'utf-8')
+  } catch (e) {
+    console.warn('Failed to append JSONL:', filename, e)
+  }
+}
 
 function updateOverlayVisibility(isVisible: boolean): void {
     if (!overlayWindow) return
@@ -212,6 +255,19 @@ ipcMain.on('start-session', (_event, width: number, height: number) => {
     if (captureInterval) clearInterval(captureInterval) // Clear any old interval
     captureInterval = setInterval(performScreenCapture, 15000)
     console.log('Session started. Capturing screen every 15 seconds.')
+
+    // Initialize session aggregation
+    sessionStartAt = Date.now()
+    sessionEndAt = null
+    lastCheckAt = null
+    totalUnfocusedMs = 0
+    checkCount = 0
+    currentUnfocusedStreakMs = 0
+    longestUnfocusedStreakMs = 0
+    activityCounts.clear()
+    appActivityCounts.clear()
+    lastFocused = null
+    finalizedTotalUnfocusedMs = null
   }
 })
 
@@ -297,11 +353,96 @@ ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
     // Store these values in variables for later use
     global.currentApp = current_app
     global.currentActivity = current_activity
-    
+
+    // Aggregate for summary
+    const now = Date.now()
+    if (sessionStartAt) {
+      if (lastCheckAt) {
+        const deltaMs = Math.max(0, now - lastCheckAt)
+        if (!focused) {
+          totalUnfocusedMs += deltaMs
+          currentUnfocusedStreakMs += deltaMs
+          if (currentUnfocusedStreakMs > longestUnfocusedStreakMs) {
+            longestUnfocusedStreakMs = currentUnfocusedStreakMs
+          }
+        } else {
+          currentUnfocusedStreakMs = 0
+        }
+      }
+      lastCheckAt = now
+      lastFocused = focused
+      checkCount += 1
+      if (!focused && user_activity) incrementMap(activityCounts, String(user_activity))
+      if (current_app && current_activity) incrementMap(appActivityCounts, `${current_app} — ${current_activity}`)
+
+      // Persist logs to json-logs for post-analysis
+      appendJsonl('vision-responses.jsonl', {
+        ts: new Date(now).toISOString(),
+        focused,
+        user_activity
+      })
+      if (current_app || current_activity) {
+        appendJsonl('app-info.jsonl', {
+          ts: new Date(now).toISOString(),
+          current_app,
+          current_activity
+        })
+      }
+    }
+
     return { focused, user_activity, current_app, current_activity }
   } catch (error) {
     console.error('Failed to check focus:', error)
     return { focused: true, user_activity: 'study screen' } // Default on error
+  }
+})
+
+ipcMain.on('end-session', () => {
+  if (captureInterval) clearInterval(captureInterval)
+  captureInterval = null
+  // Finalize aggregation at end
+  const now = Date.now()
+  sessionEndAt = now
+  if (sessionStartAt && lastCheckAt != null) {
+    const tailMs = Math.max(0, now - lastCheckAt)
+    const effectiveUnfocused = totalUnfocusedMs + (!lastFocused ? tailMs : 0)
+    finalizedTotalUnfocusedMs = effectiveUnfocused
+  } else {
+    finalizedTotalUnfocusedMs = totalUnfocusedMs
+  }
+})
+
+ipcMain.handle('get-session-summary', () => {
+  const now = Date.now()
+  const end = sessionEndAt || now
+  const start = sessionStartAt || end
+  const totalDurationMs = Math.max(0, end - start)
+  const topActivity = getTopEntry(activityCounts)
+  const topAppAct = getTopEntry(appActivityCounts)
+  // Include tail interval if session isn't finalized
+  let effectiveUnfocusedMs = finalizedTotalUnfocusedMs ?? totalUnfocusedMs
+  if (finalizedTotalUnfocusedMs == null && lastCheckAt != null) {
+    const tailMs = Math.max(0, end - lastCheckAt)
+    if (lastFocused === false) effectiveUnfocusedMs += tailMs
+  }
+
+  return {
+    sessionStart: new Date(start).toISOString(),
+    sessionEnd: new Date(end).toISOString(),
+    totalDurationSec: Math.round(totalDurationMs / 1000),
+    checks: checkCount,
+    totalUnfocusedSec: Math.round(effectiveUnfocusedMs / 1000),
+    mostCommonDistraction: topActivity
+      ? { activity: topActivity.key, occurrences: topActivity.count }
+      : null,
+    mostUsedAppActivity: topAppAct
+      ? ((): { app: string; activity: string; occurrences: number } => {
+          const [appName, activity = ''] = topAppAct.key.split(' — ')
+          return { app: appName, activity, occurrences: topAppAct.count }
+        })()
+      : null,
+    focusRatio: totalDurationMs > 0 ? Number(((totalDurationMs - effectiveUnfocusedMs) / totalDurationMs).toFixed(3)) : 1,
+    longestUnfocusedStreakSec: Math.round(longestUnfocusedStreakMs / 1000)
   }
 })
 

@@ -254,27 +254,140 @@ const SessionFinished = ({
   onExit: () => void
   exitMessage: string
 }): React.JSX.Element => {
+  type Summary = {
+    sessionStart: string
+    sessionEnd: string
+    totalDurationSec: number
+    checks: number
+    totalUnfocusedSec: number
+    mostCommonDistraction: { activity: string; occurrences: number } | null
+    mostUsedAppActivity: { app: string; activity: string; occurrences: number } | null
+    focusRatio: number
+    longestUnfocusedStreakSec: number
+  }
+
+  const [summary, setSummary] = useState<Summary | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    window.api
+      .getSessionSummary()
+      .then((s) => {
+        if (mounted) setSummary(s)
+      })
+      .catch(() => {
+        // best-effort; keep UI resilient
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const formatSeconds = (sec: number) => {
+    const minutes = Math.floor(sec / 60)
+    const seconds = sec % 60
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+
+  const glassCard: React.CSSProperties = {
+    position: 'relative',
+    borderRadius: 14,
+    padding: 16,
+    background: 'linear-gradient( to bottom right, rgba(34,34,34,0.65), rgba(34,34,34,0.35) )',
+    border: '1px solid rgba(255,255,255,0.10)',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
+    backdropFilter: 'blur(18px) saturate(120%)',
+    WebkitBackdropFilter: 'blur(18px) saturate(120%)',
+    color: '#f5f5f5'
+  }
+
+  // Removed label badge
+
+  const grid: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: 12,
+    marginTop: 12
+  }
+
+  const cell: React.CSSProperties = {
+    ...glassCard,
+    padding: 12,
+    borderRadius: 10
+  }
+
   return (
     <div className="session-finished">
-      <div
-        className="text"
-        style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px', color: '#69e688' }}
-      >
+      <div className="text" style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px', color: '#69e688' }}>
         Session Finished!
       </div>
-      <div className="intention-display" style={{ marginBottom: '20px' }}>
-        Your locked-in session has ended.{exitMessage && ` ${exitMessage}`} Good work!
+      <div className="intention-display" style={{ marginBottom: '16px' }}>
+        Your locked-in session has ended.{exitMessage && ` ${exitMessage}`}
       </div>
-      <div className="actions">
+
+      <div style={glassCard}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Session Summary</div>
+
+        <div style={grid}>
+          <div style={cell}>
+            <div style={{ fontSize: 12, color: '#c9c9c9' }}>Total duration</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#69e688' }}>
+              {summary ? formatSeconds(summary.totalDurationSec) : '--:--'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9aa0a6' }}>checks: {summary?.checks ?? '—'}</div>
+          </div>
+          <div style={cell}>
+            <div style={{ fontSize: 12, color: '#c9c9c9' }}>Time not locked-in</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#ee8686' }}>
+              {summary ? formatSeconds(summary.totalUnfocusedSec) : '--:--'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9aa0a6' }}>Longest streak: {summary ? formatSeconds(summary.longestUnfocusedStreakSec) : '--:--'}</div>
+          </div>
+          <div style={cell}>
+            <div style={{ fontSize: 12, color: '#c9c9c9' }}>Focus ratio</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#c7d4ff' }}>
+              {summary ? `${Math.round(summary.focusRatio * 100)}%` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9aa0a6' }}>Higher is better</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={cell}>
+            <div style={{ fontSize: 12, color: '#c9c9c9', marginBottom: 6 }}>Most common distraction</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>
+              {summary?.mostCommonDistraction ? summary.mostCommonDistraction.activity : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9aa0a6' }}>
+              {summary?.mostCommonDistraction ? `${summary.mostCommonDistraction.occurrences} occurrences` : 'No distractions detected'}
+            </div>
+          </div>
+          <div style={cell}>
+            <div style={{ fontSize: 12, color: '#c9c9c9', marginBottom: 6 }}>Most used app/activity</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>
+              {summary?.mostUsedAppActivity ? `${summary.mostUsedAppActivity.app} — ${summary.mostUsedAppActivity.activity}` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#9aa0a6' }}>
+              {summary?.mostUsedAppActivity ? `${summary.mostUsedAppActivity.occurrences} detections` : 'Not detected'}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14, ...glassCard, padding: 12, borderRadius: 10 }}>
+          <div style={{ fontSize: 12, color: '#c9c9c9' }}>Timestamps</div>
+          <div style={{ fontSize: 12, color: '#9aa0a6', marginTop: 4 }}>
+            Start: {summary?.sessionStart ? new Date(summary.sessionStart).toLocaleTimeString() : '—'}
+            {' • '}End: {summary?.sessionEnd ? new Date(summary.sessionEnd).toLocaleTimeString() : '—'}
+          </div>
+        </div>
+      </div>
+
+      <div className="actions" style={{ marginTop: 16 }}>
         <div className="action">
-          <button onClick={onRestart} className="start-button">
-            Start another session
-          </button>
+          <button onClick={onRestart} className="start-button">Start another session</button>
         </div>
         <div className="action">
-          <button onClick={onExit} className="exit-button">
-            Exit
-          </button>
+          <button onClick={onExit} className="exit-button">Exit</button>
         </div>
       </div>
     </div>
@@ -293,6 +406,8 @@ const sessionViewWidth = 600
 const sessionViewHeight = 400
 const inputViewWidth = 400
 const inputViewHeight = 260
+const finishedViewWidth = 720
+const finishedViewHeight = 520
 
 function App(): React.JSX.Element {
 
@@ -315,14 +430,16 @@ function App(): React.JSX.Element {
   }
 
   const handleFinish = () => {
-    window.api.showSession(inputViewWidth, inputViewHeight)
+    window.api.endSession()
+    window.api.showSession(finishedViewWidth, finishedViewHeight)
     setExitMessage('') // Reset exit message for normal finish
     setAppState(AppState.Finished)
   }
 
   const handleExitWithMessage = (message: string) => {
     setExitMessage(message)
-    window.api.showSession(inputViewWidth, inputViewHeight)
+    window.api.endSession()
+    window.api.showSession(finishedViewWidth, finishedViewHeight)
     setAppState(AppState.Finished)
   }
 
