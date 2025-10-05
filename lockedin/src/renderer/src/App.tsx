@@ -1,11 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
-<<<<<<< HEAD
-=======
 import { AnimatePresence, motion } from 'framer-motion'
 import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
->>>>>>> origin/main
 
 // --- Components for different views ---
 

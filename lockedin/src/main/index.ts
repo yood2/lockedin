@@ -128,10 +128,6 @@ async function performScreenCapture(): Promise<void> {
     captureService.cleanupOldScreenshots(10)
     console.log('Cleaned up old screenshots, keeping the last 10.')
     console.log('Calling Gemini API...')
-<<<<<<< HEAD
-    const textResult = await analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
-    console.log('Gemini API response received:', textResult)
-=======
     var textResult = await analyzeScreenshotWithGemini(result.imageBuffer, sessionIntention)
 
     if (overlayWindow) {
@@ -139,7 +135,6 @@ async function performScreenCapture(): Promise<void> {
       updateOverlayVisibility(true)
     }
     console.log('Gemini answer: ', textResult)
->>>>>>> origin/main
 
   } catch (error) {
     console.error('Failed to capture screen:', error)
@@ -190,7 +185,6 @@ ipcMain.on('exit-app', () => {
   app.quit()
 })
 
-<<<<<<< HEAD
 ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
   try {
     // Persist webcam snapshot to disk for debugging
@@ -233,10 +227,6 @@ ipcMain.handle('check-focus', async (_, imageDataUrl: string) => {
     console.error('Failed to check focus:', error)
     return true // Default to focused on error
   }
-=======
-ipcMain.on('overlay-dismissed', () => {
-  updateOverlayVisibility(false)
->>>>>>> origin/main
 })
 
 // This method will be called when Electron has finished
