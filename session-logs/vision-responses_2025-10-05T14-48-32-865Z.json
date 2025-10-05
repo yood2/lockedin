@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-10-05T14:48:32.865Z",
+  "focused": false,
+  "userActivity": "look away",
+  "currentApp": "webcam",
+  "currentActivity": "image capture",
+  "rawResponse": "{\"focused\":false,\"user_activity\":\"look away\",\"current_app\":\"webcam\",\"current_activity\":\"image capture\"}"
+}

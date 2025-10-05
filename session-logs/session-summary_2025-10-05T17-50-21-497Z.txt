@@ -1,0 +1,9 @@
+Session Summary
+Start: 2025-10-05T17:49:23.024Z
+End: 2025-10-05T17:50:21.497Z
+Total Duration: 58s
+Unfocused: 37s
+Focus Ratio: 37%
+Longest Unfocused Streak: 32s
+Most Common Distraction: look away (2)
+Most Used App/Activity: ai assistant — image classification (1)
