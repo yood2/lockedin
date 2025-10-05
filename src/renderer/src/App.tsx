@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLockdown } from './hooks/useLockdown'
 import { FuturisticSplash } from './components/FuturisticSplash'
-import { FuturisticOverlay } from './components/FuturisticOverlay'
 import { AiResponseOverlayContainer } from './components/AiResponseOverlay'
 
 // --- Components for different views ---
@@ -91,7 +90,6 @@ const SessionInProgress = ({
   const [intention, setIntention] = useState('Loading intention...')
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60)
   const [showSplash, setShowSplash] = useState(false)
-  const [isOverlayVisible, setIsOverlayVisible] = useState(false)
   const intervalRef = useRef<number | undefined>(undefined)
 
   // Vision-based focus tracking
@@ -144,7 +142,6 @@ const SessionInProgress = ({
   }
 
   const handleHide = () => {
-    setIsOverlayVisible(true)
     onHide()
   }
 
@@ -152,7 +149,6 @@ const SessionInProgress = ({
     console.log('user has locked in', durationMinutes)
     const elapsedSeconds = Math.max(0, durationMinutes * 60 - timeLeft)
     const message = `You've focused for ${formatTime(elapsedSeconds)} so far.`
-    setIsOverlayVisible(false)
     onExit(message)
   }
 
@@ -180,7 +176,7 @@ const SessionInProgress = ({
           borderRadius: '4px',
           objectFit: 'cover',
           opacity: 0.5,
-          display: isOverlayVisible || showSplash ? 'none' : 'block' // Hide with CSS, not unmount
+          display: showSplash ? 'none' : 'block' // Hide with CSS, not unmount
         }}
         width="640"
         height="480"
@@ -189,8 +185,8 @@ const SessionInProgress = ({
         playsInline
       />
       
-      {/* Main Session View - Hidden when overlay is active OR splash is showing */}
-      {!isOverlayVisible && !showSplash && (
+      {/* Main Session View - Hidden only when splash is showing */}
+      {!showSplash && (
         <div className="session-progress">
           <div className={`study-status ${isFocused ? 'status-studying' : 'status-away'}`}>
             <div className="status-indicator" />
@@ -238,19 +234,6 @@ const SessionInProgress = ({
         </div>
       )}
 
-      {/* Futuristic Overlay - Hidden when splash is showing */}
-      {!showSplash && (
-        <FuturisticOverlay
-          isVisible={isOverlayVisible}
-          isFocused={isFocused}
-          isChecking={isChecking}
-          userActivity={userActivity}
-          intention={intention}
-          timeLeft={timeLeft}
-          onHide={() => setIsOverlayVisible(false)}
-          onExit={handleExit}
-        />
-      )}
 
       {/* Splash Screen for other activity detected - Takes over entire screen */}
       <FuturisticSplash
