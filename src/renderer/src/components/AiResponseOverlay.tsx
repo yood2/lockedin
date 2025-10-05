@@ -8,6 +8,27 @@ export const AiResponseOverlayContainer = (): React.JSX.Element => {
   const hideTimerRef = useRef<number | undefined>(undefined)
 
   const dismissOverlay = window.api?.dismissOverlay || (() => {})
+
+  // Play sound when the overlay becomes visible
+  useEffect(() => {
+    if (showResponse) {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+
+      oscillator.frequency.value = 800
+      oscillator.type = 'sine'
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + 0.5)
+    }
+  }, [showResponse])
   
   const handleAiResponse = useCallback((newResponse: string, error: boolean) => {
     setResponse(newResponse)
@@ -65,7 +86,7 @@ export const AiResponseOverlayContainer = (): React.JSX.Element => {
   }
 
   return (
-    <div id="ai-response-root">
+<div id="ai-response-root">
       <AnimatePresence>
         {showResponse && (
           <motion.div
@@ -76,12 +97,15 @@ export const AiResponseOverlayContainer = (): React.JSX.Element => {
             transition={{ type: 'spring', duration: 0.5 }}
             style={{
               padding: '12px 20px',
-              backgroundColor: isError ? 'rgba(204, 68, 68, 0.8)' : 'rgba(26, 10, 46, 0.7)',
-              borderRadius: '5px',
-              border: `1px solid ${isError ? 'rgba(255, 0, 64, 0.6)' : 'rgba(0, 255, 255, 0.4)'}`,
-              boxShadow: 'none',
+              // Updated to dark background like the main app card, distinct red for error
+              backgroundColor: isError ? 'rgba(150, 40, 40, 0.8)' : 'rgba(34, 34, 34, 0.7)',
+              // Updated to match main app card
+              borderRadius: '8px',
+              border: isError ? '1px solid rgba(255, 85, 85, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.4)', // Added subtle shadow
               textAlign: 'center',
-              color: isError ? '#ffcccc' : '#00ffff',
+              // Updated to light text color for better coherence
+              color: isError ? '#ffcccc' : '#f5f5f5',
               cursor: 'pointer',
               minWidth: '350px',
               maxWidth: '550px',
